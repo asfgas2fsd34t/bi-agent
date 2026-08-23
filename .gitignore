@@ -1,0 +1,53 @@
+# IDE and OS files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Java and Maven
+**/target/
+*.class
+*.log
+.classpath
+.project
+.settings/
+
+# JavaScript, Vue, and Vite
+**/node_modules/
+**/dist/
+**/.vite/
+**/.nuxt/
+**/coverage/
+*.tsbuildinfo
+
+# Python
+**/.venv/
+**/venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+
+# Test and tooling output
+**/playwright-report/
+**/test-results/
+**/.cache/
+**/.tmp/
+**/tmp/
+
+# Local databases and runtime files
+*.db
+*.db-shm
+*.db-wal
+*.duckdb
+*.pid

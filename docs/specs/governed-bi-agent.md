@@ -232,7 +232,7 @@ LLM 不生成或执行 Raw SQL，不定义正式指标公式，不持有数据�
 
 - 使用 Monorepo 管理前端、Java 服务、Python 服务、契约、语义包、数据集、评测、基础设施和文档。
 - Java 使用 Maven，Python 使用 `uv`，前端使用 pnpm。根级任务提供统一 lint、test、eval、build 和启动入口。
-- 第一版前端采用 React + TypeScript + Vite，图表使用 ECharts，数据表使用成熟的虚拟化表格组件。公开 API 和鉴权由 Java 提供，不增加 Next.js 服务层。
+- 第一版前端采用 Vue 3 + TypeScript + Vite，图表使用 ECharts，数据表使用成熟的虚拟化表格组件。公开 API 和鉴权由 Java 提供，不增加 Node.js/BFF 服务层。
 - 第一版唯一必需的持久基础设施是 PostgreSQL，可同时承担平台状态、Agent checkpoint、审计、反馈和 pgvector 检索。DuckDB 是离线业务数据源适配器，不保存平台状态。
 - Redis、Kafka、Elasticsearch 和对象存储不是第一版必需依赖。
 - Docker Compose 提供完整本地启动；公开环境仅部署模拟数据和预置角色，不开放自由注册或真实企业数据。
