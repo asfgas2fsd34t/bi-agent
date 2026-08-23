@@ -1,6 +1,6 @@
 # Governed BI Agent 产品与系统规格
 
-> 状态：Draft，内容已经过需求访谈确认，待发布到项目 issue tracker。
+> 状态：Published，内容已经过需求访谈确认并发布为 [GitHub Issue #1](https://github.com/asfgas2fsd34t/bi-agent/issues/1)。
 >
 > 目标读者：产品设计者、Java 工程师、Python Agent 工程师、前端工程师和后续实现 Agent。
 >
@@ -319,5 +319,5 @@ LLM 不生成或执行 Raw SQL，不定义正式指标公式，不持有数据�
 - 求职定位为 Java/Python 平衡但 Java 约占 60%。简历叙事应强调：Python 负责 Agent 能力，Java 负责可信语义执行和平台工程。
 - 90 秒演示主线应包含：歧义澄清、成功 SemanticQuery 编译与可信结果、结构化追问、越权或昂贵查询拒绝及 trace/policy 原因。
 - 当前交互原型是在本规格决策之后产生的参考产物。实现可以借鉴，但不应把原型内部结构当作稳定 API 或直接提升为生产代码。
-- 当前工作区尚未初始化 Git，也没有配置 issue tracker 或 `ready-for-agent` 标签。因此本规格暂时只能落为本地文档，不能完成 `to-spec` 要求的 tracker 发布。应运行 `/setup-matt-pocock-skills` 完成 tracker、标签和文档布局配置后，再把本规格发布为带 `ready-for-agent` 标签的项目 issue。
+- 本规格已发布为 [GitHub Issue #1](https://github.com/asfgas2fsd34t/bi-agent/issues/1)，并标记为 `ready-for-agent` 和 `enhancement`。本地文档是可版本控制的规格副本，GitHub Issue 是后续 tickets 和实现协作的 tracker 入口。
 - 规格发布后，下一步使用 `/to-tickets` 拆成阻塞关系明确的纵向 tracer-bullet tickets；不要按“先做完所有 Java，再做所有 Python，再做前端”的水平层拆分。
