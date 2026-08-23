@@ -1,0 +1,12 @@
+{
+  "name": "bi-agent",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "pnpm --dir apps/web dev",
+    "build": "pnpm --dir apps/web build",
+    "typecheck": "pnpm --dir apps/web typecheck",
+    "test": "pnpm --dir apps/web test",
+    "lint": "pnpm --dir apps/web lint"
+  }
+}
