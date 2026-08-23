@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BarChart3, Boxes, Database, FileChartColumn, LayoutDashboard, Plus } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { fixtureScenarios, type FixtureScenarioId } from "@/modules/analysis/fixture-analysis-run-source";
@@ -12,6 +12,14 @@ const router = useRouter();
 const store = useAnalysisWorkspaceStore();
 const { selectedScenario } = storeToRefs(store);
 const activeHistoryId = ref("channel-revenue");
+
+watch(
+  () => route.name,
+  (routeName) => {
+    if (routeName !== "analysis") activeHistoryId.value = "";
+  },
+  { immediate: true },
+);
 
 const historyGroups = [
   {

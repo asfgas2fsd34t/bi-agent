@@ -1,0 +1,8 @@
+{
+  "kind": "bar",
+  "categoryField": "channel",
+  "series": [
+    { "name": "2026 年 7 月", "field": "current" },
+    { "name": "2025 年 7 月", "field": "previous" }
+  ]
+}

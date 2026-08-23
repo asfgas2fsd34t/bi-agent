@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bi-agent.dev/contracts/v1/query-result.schema.json",
+  "title": "QueryResult v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["columns", "rows", "truncated"],
+  "properties": {
+    "columns": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": {
+          "type": ["string", "number", "null"]
+        }
+      }
+    },
+    "truncated": { "type": "boolean" }
+  }
+}

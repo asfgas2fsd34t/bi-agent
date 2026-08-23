@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bi-agent.dev/contracts/v1/verified-facts.schema.json",
+  "title": "VerifiedFacts v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["facts", "asOf"],
+  "properties": {
+    "facts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/verifiedFact" }
+    },
+    "asOf": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "verifiedFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "value"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "value": { "type": ["string", "number", "null"] },
+        "formattedValue": { "type": "string" },
+        "unit": { "type": "string" },
+        "change": { "type": "number" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "run_id": "run-demo-001",
+  "workspace_id": "demo-workspace",
+  "status": "running",
+  "question": "看一下上个月收入最好的渠道。",
+  "semantic_version": "ecommerce@3",
+  "created_at": "2026-08-23T08:00:00Z",
+  "updated_at": "2026-08-23T08:00:01Z"
+}

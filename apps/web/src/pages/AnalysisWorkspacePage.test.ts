@@ -55,14 +55,18 @@ describe("Analysis Workspace page", () => {
   it("keeps the product sidebar while the right page switches to Semantic Studio", async () => {
     await renderPage();
     const sidebar = screen.getByRole("complementary", { name: "产品导航" });
+    const history = within(screen.getByRole("region", { name: "最近会话" }));
+
+    await fireEvent.click(history.getByRole("button", { name: /^渠道净收入同比/ }));
+    expect(history.getByRole("button", { name: /^渠道净收入同比/ }).getAttribute("aria-pressed")).toBe("true");
 
     await fireEvent.click(screen.getByRole("link", { name: "语义建模" }));
 
     expect(await screen.findByRole("heading", { name: "ecommerce" })).toBeTruthy();
     expect(screen.getByRole("complementary", { name: "产品导航" })).toBe(sidebar);
+    expect(history.getByRole("button", { name: /^渠道净收入同比/ }).getAttribute("aria-pressed")).toBe("false");
     expect(screen.getByRole("button", { name: "载入成功场景" })).toBeTruthy();
 
-    const history = within(screen.getByRole("region", { name: "最近会话" }));
     await fireEvent.click(history.getByRole("button", { name: /^退款率异常定位/ }));
     expect(await screen.findByRole("heading", { name: "渠道净收入同比" })).toBeTruthy();
     expect(router.currentRoute.value.name).toBe("analysis");

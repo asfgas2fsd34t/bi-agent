@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bi-agent.dev/contracts/v1/analysis-run.schema.json",
+  "title": "AnalysisRun v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "workspace_id", "status", "question", "semantic_version", "created_at", "updated_at"],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["queued", "running", "awaiting_clarification", "completed", "empty", "rejected", "failed", "cancelled", "recovering"] },
+    "question": { "type": "string", "minLength": 1 },
+    "semantic_version": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}

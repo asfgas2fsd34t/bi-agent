@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createAnalysisWorkspace } from "./analysis-workspace";
 import { createFixtureAnalysisRunSource, type FixtureScenarioId } from "./fixture-analysis-run-source";
-import type { AgentEvent, AnalysisRunStatus } from "@contracts/public/analysis-run";
+import type { AgentEvent, AnalysisRunStatus } from "@contracts/typescript/analysis-run";
 
 describe("Analysis Workspace", () => {
   it.each<[FixtureScenarioId, AnalysisRunStatus]>([
@@ -31,9 +31,9 @@ describe("Analysis Workspace", () => {
     expect(workspace.snapshot.value.semanticQuery?.metric).toBe("net_revenue");
     expect(workspace.snapshot.value.sql?.dialect).toBe("postgresql");
     expect(workspace.snapshot.value.data?.rows).toHaveLength(5);
-    expect(workspace.snapshot.value.chart?.kind).toBe("comparison_bar");
+    expect(workspace.snapshot.value.chart?.kind).toBe("bar");
     expect(workspace.snapshot.value.insights[0]?.evidence).toBe("data.rows[channel=抖音]");
-    expect(workspace.snapshot.value.verifiedFacts?.total.change).toBe(13.6);
+    expect(workspace.snapshot.value.verifiedFacts?.facts.find((fact) => fact.key === "net_revenue")?.change).toBe(13.6);
   });
 
   it("applies a clarification choice through the Analysis Workspace Interface", async () => {
@@ -44,7 +44,7 @@ describe("Analysis Workspace", () => {
 
     expect(workspace.snapshot.value.status).toBe("completed");
     expect(workspace.snapshot.value.semanticQuery?.metric).toBe("gmv");
-    expect(workspace.snapshot.value.verifiedFacts?.total.label).toBe("GMV");
+    expect(workspace.snapshot.value.verifiedFacts?.facts.find((fact) => fact.key === "gmv")?.label).toBe("GMV");
   });
 
   it("cancels and retries through the Analysis Workspace Interface", async () => {

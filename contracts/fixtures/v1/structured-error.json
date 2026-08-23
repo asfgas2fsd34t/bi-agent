@@ -1,0 +1,7 @@
+{
+  "code": "POLICY_DENIED",
+  "title": "没有权限访问毛利指标",
+  "detail": "当前 Viewer 角色不能访问成本和毛利字段。",
+  "action": "联系工作区管理员申请 finance_analyst 角色。",
+  "retryable": false
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bi-agent.dev/contracts/v1/chart-intent.schema.json",
+  "title": "ChartIntent v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "categoryField", "series"],
+  "properties": {
+    "kind": { "enum": ["bar", "line", "area", "pie", "table"] },
+    "categoryField": { "type": "string", "minLength": 1 },
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "field"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "field": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "run_id": "run-demo-001",
+  "sequence": 1,
+  "occurred_at": "2026-08-23T08:00:01Z",
+  "event_type": "status",
+  "payload": {
+    "status": "running",
+    "label": "正在分析",
+    "detail": "Python Agent 已提交候选事件"
+  }
+}

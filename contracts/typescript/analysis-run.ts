@@ -1,7 +1,6 @@
-/**
- * Provisional public contract used by the frontend-first Fixture Lab.
- * Issue #3 will freeze this model as versioned JSON Schema/OpenAPI.
- */
+/** TypeScript view of the v1 contract shared by the Web, Java BI Core and Python Agent. */
+
+export const CONTRACT_VERSION = "v1" as const;
 
 export type AnalysisRunStatus =
   | "queued"
@@ -22,18 +21,57 @@ export interface SemanticQuery {
   limit: number;
 }
 
+export interface AnalysisRun {
+  run_id: string;
+  workspace_id: string;
+  status: AnalysisRunStatus;
+  question: string;
+  semantic_version: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ResultValue = string | number | null;
 export type ResultRow = Record<string, ResultValue>;
+
+export interface VerifiedFact {
+  key: string;
+  label: string;
+  value: ResultValue;
+  formattedValue?: string;
+  unit?: string;
+  change?: number;
+  attributes?: Record<string, ResultValue>;
+}
+
+export interface VerifiedFacts {
+  facts: VerifiedFact[];
+  asOf: string;
+}
 
 export interface ChartSeries {
   name: string;
   field: string;
 }
 
-export interface VerifiedFacts {
-  total: { label: string; formattedValue: string; change: number };
-  leader: { label: string; formattedValue: string; share: number };
-  freshness: { time: string; date: string };
+export interface StructuredError {
+  code: string;
+  title: string;
+  detail: string;
+  action: string;
+  retryable?: boolean;
+}
+
+export interface QueryResult {
+  columns: string[];
+  rows: ResultRow[];
+  truncated: boolean;
+}
+
+export interface ChartIntent {
+  kind: "bar" | "line" | "area" | "pie" | "table";
+  categoryField: string;
+  series: ChartSeries[];
 }
 
 interface AgentEventBase {
@@ -57,17 +95,11 @@ export type AgentEvent =
   | (AgentEventBase & { event_type: "semantic_query"; payload: SemanticQuery })
   | (AgentEventBase & {
       event_type: "sql";
-      payload: { dialect: "postgresql"; statement: string };
+      payload: { dialect: "postgresql" | "duckdb"; statement: string };
     })
-  | (AgentEventBase & {
-      event_type: "data";
-      payload: { columns: string[]; rows: ResultRow[]; truncated: boolean };
-    })
+  | (AgentEventBase & { event_type: "data"; payload: QueryResult })
   | (AgentEventBase & { event_type: "verified_facts"; payload: VerifiedFacts })
-  | (AgentEventBase & {
-      event_type: "chart";
-      payload: { kind: "comparison_bar"; categoryField: string; series: ChartSeries[] };
-    })
+  | (AgentEventBase & { event_type: "chart"; payload: ChartIntent })
   | (AgentEventBase & {
       event_type: "insight";
       payload: { claim: string; evidence: string; limitation?: string };
@@ -78,5 +110,5 @@ export type AgentEvent =
     })
   | (AgentEventBase & {
       event_type: "error";
-      payload: { code: string; title: string; detail: string; action: string };
+      payload: StructuredError;
     });

@@ -7,6 +7,13 @@
     "build": "pnpm --dir apps/web build",
     "typecheck": "pnpm --dir apps/web typecheck",
     "test": "pnpm --dir apps/web test",
-    "lint": "pnpm --dir apps/web lint"
+    "lint": "pnpm --dir apps/web lint",
+    "test:python": "uv --directory apps/agent run pytest",
+    "test:java": "mvn -f apps/bi-core/pom.xml test",
+    "test:contracts": "pnpm test && pnpm test:python && pnpm test:java",
+    "dev:all": "docker compose -f infra/docker-compose.yml up --build",
+    "services:up": "docker compose -f infra/docker-compose.yml up --build -d && pnpm services:health",
+    "services:down": "docker compose -f infra/docker-compose.yml down",
+    "services:health": "node scripts/check-services.mjs"
   }
 }

@@ -3,8 +3,13 @@ import { ref, shallowRef, type DeepReadonly } from "vue";
 
 import { createAnalysisWorkspace, type AnalysisRunSnapshot, type AnalysisWorkspace } from "@/modules/analysis/analysis-workspace";
 import { createFixtureAnalysisRunSource, type FixtureScenarioId } from "@/modules/analysis/fixture-analysis-run-source";
+import { createHttpAnalysisRunSource } from "@/modules/analysis/http-analysis-run-source";
 
 const defaultQuestion = "看一下上个月收入最好的渠道，再和去年同期比较。";
+
+function createSource(scenarioId: FixtureScenarioId) {
+  return import.meta.env.VITE_AGENT_MODE === "remote" ? createHttpAnalysisRunSource() : createFixtureAnalysisRunSource(scenarioId);
+}
 
 export const useAnalysisWorkspaceStore = defineStore("analysis-workspace", () => {
   const selectedScenario = ref<FixtureScenarioId>("success");
@@ -17,7 +22,7 @@ export const useAnalysisWorkspaceStore = defineStore("analysis-workspace", () =>
     const version = ++requestVersion;
     selectedScenario.value = scenarioId;
     isLoading.value = true;
-    const nextWorkspace = createAnalysisWorkspace(createFixtureAnalysisRunSource(scenarioId));
+    const nextWorkspace = createAnalysisWorkspace(createSource(scenarioId));
     await nextWorkspace.start(question);
     if (version !== requestVersion) return;
     workspace = nextWorkspace;

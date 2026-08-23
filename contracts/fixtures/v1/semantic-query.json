@@ -1,0 +1,7 @@
+{
+  "metric": "net_revenue",
+  "dimensions": ["channel"],
+  "timeRange": "previous_month",
+  "comparison": "year_over_year",
+  "limit": 10
+}

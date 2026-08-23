@@ -1,0 +1,8 @@
+{
+  "columns": ["channel", "current", "previous", "change"],
+  "rows": [
+    { "channel": "抖音", "current": 4.82, "previous": 4.06, "change": 18.7 },
+    { "channel": "官网", "current": 0.44, "previous": 0.5, "change": -12 }
+  ],
+  "truncated": false
+}

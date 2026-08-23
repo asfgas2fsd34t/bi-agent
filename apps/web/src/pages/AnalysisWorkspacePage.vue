@@ -23,7 +23,7 @@ import { storeToRefs } from "pinia";
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
 
 import { useAnalysisWorkspaceStore } from "@/stores/analysis-workspace";
-import type { ResultRow } from "@contracts/public/analysis-run";
+import type { ChartIntent, ResultRow, VerifiedFact } from "@contracts/typescript/analysis-run";
 
 const store = useAnalysisWorkspaceStore();
 const AnalysisChart = defineAsyncComponent(() => import("@/components/AnalysisChart.vue"));
@@ -49,7 +49,12 @@ const statusTone = computed(() => {
   }
 });
 
-const metricLabel = computed(() => snapshot.value?.verifiedFacts?.total.label ?? "净收入");
+// 共享契约只提供通用事实集合，页面在展示层按稳定 key 选择当前卡片。
+const factByKey = (key: string): VerifiedFact | undefined => snapshot.value?.verifiedFacts?.facts.find((fact) => fact.key === key);
+const metricFact = computed(() => factByKey(snapshot.value?.semanticQuery?.metric ?? "net_revenue"));
+const leaderFact = computed(() => factByKey("top_channel"));
+const freshnessFact = computed(() => factByKey("data_freshness"));
+const metricLabel = computed(() => metricFact.value?.label ?? "净收入");
 const analysisTitle = computed(() => `渠道${metricLabel.value}同比`);
 
 onMounted(() => {
@@ -143,6 +148,19 @@ function formatChange(row: ResultRow): string {
 function changeTone(row: ResultRow): "positive" | "negative" | undefined {
   const value = cellNumber(row, "change");
   return value === null ? undefined : value >= 0 ? "positive" : "negative";
+}
+
+function factValueText(fact: VerifiedFact | undefined): string {
+  return fact?.value === null || fact?.value === undefined ? "—" : String(fact.value);
+}
+
+function factAttributeText(fact: VerifiedFact | undefined, key: string): string {
+  const value = fact?.attributes?.[key];
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function chartKindLabel(kind: ChartIntent["kind"]): string {
+  return { bar: "柱状图", line: "折线图", area: "面积图", pie: "饼图", table: "表格" }[kind];
 }
 </script>
 
@@ -280,14 +298,20 @@ function changeTone(row: ResultRow): "positive" | "negative" | undefined {
 
           <template v-if="snapshot?.data?.rows.length">
             <section v-if="snapshot.verifiedFacts" class="metric-strip" aria-label="关键指标">
-              <div><span class="eyebrow">{{ snapshot.verifiedFacts.total.label }}</span><strong>{{ snapshot.verifiedFacts.total.formattedValue }}</strong><small class="positive">+{{ snapshot.verifiedFacts.total.change }}% YoY</small></div>
-              <div><span class="eyebrow">领先渠道</span><strong>{{ snapshot.verifiedFacts.leader.label }}</strong><small>{{ snapshot.verifiedFacts.leader.formattedValue }} · {{ snapshot.verifiedFacts.leader.share }}%</small></div>
-              <div><span class="eyebrow">数据新鲜度</span><strong>{{ snapshot.verifiedFacts.freshness.time }}</strong><small>{{ snapshot.verifiedFacts.freshness.date }}</small></div>
+              <div><span class="eyebrow">{{ metricFact?.label ?? "核心指标" }}</span><strong>{{ metricFact?.formattedValue ?? factValueText(metricFact) }}</strong><small v-if="metricFact?.change !== undefined" class="positive">{{ metricFact.change >= 0 ? "+" : "" }}{{ metricFact.change }}% YoY</small></div>
+              <div><span class="eyebrow">{{ leaderFact?.label ?? "领先项" }}</span><strong>{{ factValueText(leaderFact) }}</strong><small>{{ leaderFact?.formattedValue ?? "—" }}<template v-if="factAttributeText(leaderFact, 'share')"> · {{ factAttributeText(leaderFact, "share") }}%</template></small></div>
+              <div><span class="eyebrow">{{ freshnessFact?.label ?? "数据时间" }}</span><strong>{{ freshnessFact?.formattedValue ?? factValueText(freshnessFact) }}</strong><small>{{ factAttributeText(freshnessFact, "date") || snapshot.verifiedFacts.asOf }}</small></div>
             </section>
 
             <section v-if="snapshot.chart" class="artifact chart-artifact" aria-label="图表">
-              <div class="artifact-heading"><div><span class="artifact-icon"><BarChart3 :size="16" /></span><h2>图表</h2></div><span>按渠道比较</span></div>
-              <AnalysisChart :rows="snapshot.data.rows" :category-field="snapshot.chart.categoryField" :series="snapshot.chart.series" />
+              <div class="artifact-heading"><div><span class="artifact-icon"><BarChart3 :size="16" /></span><h2>图表</h2></div><span>{{ chartKindLabel(snapshot.chart.kind) }} · 按渠道比较</span></div>
+              <AnalysisChart
+                v-if="snapshot.chart.kind !== 'table'"
+                :rows="snapshot.data.rows"
+                :kind="snapshot.chart.kind"
+                :category-field="snapshot.chart.categoryField"
+                :series="snapshot.chart.series"
+              />
             </section>
 
             <section class="artifact" aria-label="数据">

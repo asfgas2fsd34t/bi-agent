@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@contracts/public/analysis-run";
+import type { AgentEvent } from "@contracts/typescript/analysis-run";
 
 export interface AnalysisRunSource {
   start(command: { question: string }): Promise<{ runId: string }>;

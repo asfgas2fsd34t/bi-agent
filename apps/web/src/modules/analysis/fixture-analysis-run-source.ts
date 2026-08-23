@@ -1,4 +1,4 @@
-import type { AgentEvent, ResultRow } from "@contracts/public/analysis-run";
+import type { AgentEvent, ResultRow } from "@contracts/typescript/analysis-run";
 
 import type { AnalysisRunSource } from "./analysis-run-source";
 
@@ -59,12 +59,15 @@ function successEvents(metric: MetricId = "net_revenue"): AgentEvent[] {
     }),
     event(4, "data", { columns: ["channel", "current", "previous", "change"], rows: resultRows, truncated: false }),
     event(5, "verified_facts", {
-      total: { label, formattedValue: "¥12.48M", change: 13.6 },
-      leader: { label: "抖音", formattedValue: "¥4.82M", share: 38.6 },
-      freshness: { time: "08:30", date: "2026-08-01" },
+      facts: [
+        { key: metric, label, value: 12480000, formattedValue: "¥12.48M", unit: "CNY", change: 13.6, attributes: {} },
+        { key: "top_channel", label: "领先渠道", value: "抖音", formattedValue: "¥4.82M", unit: "CNY", attributes: { share: 38.6 } },
+        { key: "data_freshness", label: "数据新鲜度", value: "2026-08-01T08:30:00+08:00", formattedValue: "08:30", attributes: { date: "2026-08-01" } },
+      ],
+      asOf: "2026-08-01T08:30:00+08:00",
     }),
     event(6, "chart", {
-      kind: "comparison_bar",
+      kind: "bar",
       categoryField: "channel",
       series: [
         { name: "2026 年 7 月", field: "current" },

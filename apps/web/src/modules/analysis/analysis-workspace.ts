@@ -1,4 +1,4 @@
-import type { AgentEvent, AnalysisRunStatus, ChartSeries, ResultRow, SemanticQuery, VerifiedFacts } from "@contracts/public/analysis-run";
+import type { AgentEvent, AnalysisRunStatus, ChartIntent, ResultRow, SemanticQuery, VerifiedFacts } from "@contracts/typescript/analysis-run";
 import { readonly, shallowRef, type DeepReadonly, type Ref } from "vue";
 
 import type { AnalysisRunSource } from "./analysis-run-source";
@@ -16,7 +16,7 @@ export interface AnalysisRunSnapshot {
   sql?: EventPayload<"sql">;
   data?: { columns: string[]; rows: ResultRow[]; truncated: boolean };
   verifiedFacts?: VerifiedFacts;
-  chart?: { kind: "comparison_bar"; categoryField: string; series: ChartSeries[] };
+  chart?: ChartIntent;
   clarification?: EventPayload<"clarification">;
   insights: EventPayload<"insight">[];
   warnings: EventPayload<"warning">[];

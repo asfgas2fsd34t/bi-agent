@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bi-agent.dev/contracts/v1/semantic-query.schema.json",
+  "title": "SemanticQuery v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metric", "dimensions", "timeRange", "comparison", "limit"],
+  "properties": {
+    "metric": { "type": "string", "minLength": 1 },
+    "dimensions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "timeRange": { "type": "string", "minLength": 1 },
+    "comparison": { "type": "string", "minLength": 1 },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 1000 }
+  }
+}

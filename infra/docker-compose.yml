@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bi_agent
+      POSTGRES_USER: bi_agent
+      POSTGRES_PASSWORD: bi_agent_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - bi-agent-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bi_agent -d bi_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  bi-core:
+    build:
+      context: ..
+      dockerfile: apps/bi-core/Dockerfile
+    environment:
+      PORT: 8080
+      AGENT_URL: http://agent:8000
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bi_agent
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  agent:
+    build:
+      context: ..
+      dockerfile: apps/agent/Dockerfile
+    environment:
+      JAVA_CORE_URL: http://bi-core:8080
+    ports:
+      - "8000:8000"
+    depends_on:
+      bi-core:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      VITE_AGENT_MODE: remote
+      JAVA_CORE_URL: http://bi-core:8080
+    ports:
+      - "4173:4173"
+    depends_on:
+      agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4173').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  bi-agent-postgres:
