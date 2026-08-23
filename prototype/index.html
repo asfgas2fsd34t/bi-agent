@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas BI Agent - Final UI Prototype</title>
+  <!-- Final consolidated prototype. Use ?final=0&variant=A|B|C to inspect the earlier alternatives. -->
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f5f2;
+      --surface: #ffffff;
+      --surface-2: #f8f9f6;
+      --ink: #1d2420;
+      --muted: #68716c;
+      --line: #dce1dc;
+      --line-strong: #c8d0ca;
+      --green: #147a55;
+      --green-soft: #e7f3ed;
+      --blue: #3267a8;
+      --blue-soft: #eaf1f9;
+      --orange: #c66b2b;
+      --orange-soft: #f9eee5;
+      --red: #b7473f;
+      --shadow: 0 10px 28px rgba(29, 36, 32, 0.10);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; letter-spacing: 0; }
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    svg { width: 18px; height: 18px; stroke-width: 1.8; }
+
+    .variant { display: none; height: 100vh; }
+    .variant.active { display: flex; }
+    .muted { color: var(--muted); }
+    .mono { font-family: "SFMono-Regular", Consolas, monospace; }
+    .eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .avatar {
+      width: 30px; height: 30px; display: grid; place-items: center;
+      border-radius: 50%; background: #21312a; color: white; font-size: 12px; font-weight: 700;
+    }
+    .icon-btn {
+      width: 34px; height: 34px; display: grid; place-items: center; padding: 0;
+      border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink);
+    }
+    .icon-btn:hover { border-color: var(--line-strong); background: var(--surface-2); }
+    .primary-btn {
+      display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 13px;
+      color: white; background: var(--green); border: 1px solid var(--green); border-radius: 6px; font-weight: 700;
+    }
+    .secondary-btn {
+      display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 12px;
+      color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-weight: 650;
+    }
+    .tag {
+      display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 8px;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: #505b55; font-size: 12px;
+    }
+    .tag.success { color: var(--green); background: var(--green-soft); border-color: #cce5d7; }
+    .tag.info { color: var(--blue); background: var(--blue-soft); border-color: #d7e5f3; }
+    .tag.warn { color: var(--orange); background: var(--orange-soft); border-color: #ecd8ca; }
+    .tag svg { width: 14px; height: 14px; }
+
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+    .brand-mark {
+      width: 30px; height: 30px; border-radius: 6px; display: grid; place-items: center;
+      background: var(--ink); color: white;
+    }
+    .brand-mark svg { width: 17px; height: 17px; }
+
+    .chart-bars { display: flex; align-items: end; gap: 16px; height: 220px; padding: 16px 8px 0; border-bottom: 1px solid var(--line); }
+    .bar-group { flex: 1; min-width: 44px; height: 100%; display: flex; align-items: end; justify-content: center; gap: 5px; position: relative; }
+    .bar { width: 25%; min-width: 12px; max-width: 28px; border-radius: 3px 3px 0 0; transition: opacity 120ms ease; }
+    .bar:hover { opacity: .75; }
+    .bar.current { background: var(--green); }
+    .bar.previous { background: #b7c2bb; }
+    .bar-label { position: absolute; bottom: -25px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .legend { display: flex; align-items: center; gap: 18px; font-size: 12px; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    td { padding: 11px 12px; border-bottom: 1px solid #edf0ed; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .delta-up { color: var(--green); font-weight: 700; }
+    .delta-down { color: var(--red); font-weight: 700; }
+
+    .composer { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 7px; padding: 7px; }
+    .composer input { flex: 1; min-width: 0; height: 30px; border: 0; outline: none; background: transparent; color: var(--ink); }
+
+    /* Variant A: balanced three-column workspace */
+    .variant-a { background: var(--bg); }
+    .a-rail { width: 228px; flex: 0 0 228px; border-right: 1px solid var(--line); background: #eef1ed; display: flex; flex-direction: column; padding: 16px 12px 84px; }
+    .a-rail .brand { padding: 0 6px 18px; }
+    .a-new { width: 100%; justify-content: center; margin-bottom: 18px; }
+    .rail-section { margin: 10px 6px 6px; }
+    .history-item { display: block; width: 100%; padding: 9px 10px; border: 0; background: transparent; border-radius: 6px; text-align: left; color: #4d5751; }
+    .history-item small { display: block; color: #879089; margin-top: 3px; }
+    .history-item.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .a-rail-footer { margin-top: auto; padding: 10px 6px 0; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 9px; }
+    .a-shell { flex: 1; min-width: 0; display: grid; grid-template-rows: 56px minmax(0, 1fr); }
+    .a-header { display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.92); }
+    .a-header-left, .a-header-right { display: flex; align-items: center; gap: 10px; }
+    .a-main { min-height: 0; position: relative; display: grid; grid-template-columns: minmax(300px, 38%) minmax(520px, 62%); overflow: hidden; transition: grid-template-columns 180ms ease; }
+    .a-main.chat-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+    .a-main.chat-collapsed .a-chat { opacity: 0; visibility: hidden; pointer-events: none; }
+    .a-chat { min-width: 0; border-right: 1px solid var(--line); background: var(--surface); display: grid; grid-template-rows: 45px minmax(0, 1fr) auto; transition: opacity 140ms ease; }
+    .chat-titlebar { display: flex; align-items: center; justify-content: space-between; padding: 0 14px 0 18px; border-bottom: 1px solid var(--line); }
+    .chat-titlebar strong { font-size: 12px; }
+    .chat-scroll { overflow: auto; padding: 24px; }
+    .message { margin-bottom: 24px; }
+    .message-head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font-size: 12px; font-weight: 750; }
+    .agent-dot { width: 27px; height: 27px; border-radius: 6px; display: grid; place-items: center; background: var(--green-soft); color: var(--green); }
+    .agent-dot svg { width: 15px; height: 15px; }
+    .message p { margin: 0; font-size: 14px; line-height: 1.65; }
+    .user-bubble { padding: 12px 14px; background: #f0f2ef; border-radius: 7px; }
+    .clarification { margin-top: 12px; border-left: 3px solid var(--orange); padding: 4px 0 4px 12px; }
+    .clarification-options { display: grid; gap: 7px; margin-top: 10px; }
+    .clarification-options button { text-align: left; padding: 9px 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; color: var(--ink); }
+    .clarification-options button.selected { border-color: var(--green); background: var(--green-soft); color: var(--green); font-weight: 700; }
+    .a-composer { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
+    .a-workbench { min-width: 0; overflow: auto; padding: 24px 28px 100px; }
+    .workbench-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .workbench-title h1 { margin: 5px 0 7px; font-size: 22px; line-height: 1.25; }
+    .workbench-actions { display: flex; gap: 8px; }
+    .metric-strip { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); border: 1px solid var(--line); background: var(--surface); border-radius: 7px; margin-bottom: 18px; }
+    .metric-cell { padding: 14px 16px; border-right: 1px solid var(--line); }
+    .metric-cell:last-child { border-right: 0; }
+    .metric-cell strong { display: block; font-size: 19px; margin-top: 6px; }
+    .artifact { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; margin-bottom: 16px; }
+    .artifact-head { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 15px; border-bottom: 1px solid var(--line); }
+    .artifact-body { padding: 16px; }
+    .artifact-tabs { display: flex; align-items: center; gap: 3px; }
+    .artifact-tab { min-height: 28px; padding: 0 9px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .artifact-tab.active { background: var(--green-soft); color: var(--green); }
+    .result-pane[hidden] { display: none; }
+    .insight-list { display: grid; gap: 10px; }
+    .insight { display: grid; grid-template-columns: 24px 1fr; gap: 9px; align-items: start; font-size: 13px; line-height: 1.55; }
+    .insight-num { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--green-soft); color: var(--green); font-size: 11px; font-weight: 800; }
+    .run-drawer { position: absolute; z-index: 20; top: 0; right: 0; bottom: 0; width: 324px; overflow: auto; padding: 16px 17px 88px; visibility: hidden; background: #f3f5f2; border-left: 1px solid var(--line); box-shadow: -12px 0 28px rgba(29,36,32,.12); transform: translateX(102%); transition: transform 180ms ease, visibility 0s linear 180ms; }
+    .a-main.details-open .run-drawer { visibility: visible; transform: translateX(0); transition: transform 180ms ease; }
+    .drawer-head { height: 42px; display: flex; align-items: center; justify-content: space-between; margin: -4px 0 4px; }
+    .drawer-head strong { font-size: 14px; }
+    .final-mode .prototype-switcher { display: none; }
+    .final-mode .a-workbench { padding-bottom: 28px; }
+
+    /* Variant B: canvas-first */
+    .variant-b { background: #f7f7f4; flex-direction: column; }
+    .b-header { height: 58px; flex: 0 0 58px; display: grid; grid-template-columns: 240px 1fr 240px; align-items: center; padding: 0 18px; background: #1e2723; color: white; }
+    .b-header .brand-mark { background: white; color: #1e2723; }
+    .b-command { justify-self: center; width: min(560px, 100%); height: 36px; display: flex; align-items: center; gap: 9px; padding: 0 11px; border: 1px solid #46514c; border-radius: 6px; background: #2a3530; color: #dce3df; }
+    .b-command span { flex: 1; font-size: 13px; }
+    .b-actions { justify-self: end; display: flex; gap: 8px; }
+    .b-actions .icon-btn { background: transparent; border-color: #46514c; color: white; }
+    .b-shell { flex: 1; min-height: 0; display: grid; grid-template-columns: 56px minmax(0,1fr) 330px; }
+    .b-nav { border-right: 1px solid var(--line); background: #eaede9; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 0 90px; }
+    .b-nav .icon-btn { background: transparent; border-color: transparent; }
+    .b-nav .icon-btn.active { color: var(--green); background: white; border-color: var(--line); }
+    .b-canvas { min-width: 0; overflow: auto; padding: 24px 28px 100px; }
+    .b-topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .b-topline h1 { font-size: 21px; margin: 2px 0 0; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .filter-box { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; font-size: 12px; }
+    .b-chart-stage { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 0 34px; }
+    .b-chart-stage .chart-bars { height: 300px; }
+    .b-summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 28px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+    .b-summary strong { display: block; font-size: 21px; margin-top: 5px; }
+    .b-bottom { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(280px,.8fr); gap: 24px; padding-top: 22px; }
+    .plain-section h2 { font-size: 14px; margin: 0 0 12px; }
+    .b-chat-panel { min-width: 0; border-left: 1px solid var(--line); background: var(--surface); display: grid; grid-template-rows: 58px minmax(0,1fr) auto; }
+    .b-chat-head { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--line); }
+    .b-chat-head strong { font-size: 14px; }
+    .b-chat-scroll { overflow: auto; padding: 18px; }
+    .compact-turn { margin-bottom: 18px; font-size: 13px; line-height: 1.55; }
+    .compact-turn strong { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
+    .compact-turn.agent { border-left: 2px solid var(--green); padding-left: 10px; }
+    .b-composer { padding: 12px; border-top: 1px solid var(--line); }
+
+    /* Variant C: narrative timeline */
+    .variant-c { flex-direction: column; background: #fbfbf9; }
+    .c-header { height: 62px; flex: 0 0 62px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .c-header-center { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); }
+    .segmented { border: 0; background: transparent; color: var(--muted); border-radius: 5px; min-height: 29px; padding: 0 12px; font-size: 12px; font-weight: 700; }
+    .segmented.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.07); }
+    .c-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 280px; }
+    .c-timeline { overflow: auto; padding: 34px max(24px, calc((100% - 780px)/2)) 110px; }
+    .c-question { max-width: 660px; margin-left: auto; margin-bottom: 28px; padding: 13px 16px; background: #eef1ee; border-radius: 7px; font-size: 14px; line-height: 1.55; }
+    .c-response { position: relative; padding-left: 42px; margin-bottom: 30px; }
+    .c-response > .agent-dot { position: absolute; left: 0; top: 0; }
+    .c-response h1 { margin: 0 0 8px; font-size: 21px; }
+    .c-response p { margin: 0; font-size: 14px; line-height: 1.65; color: #47514c; }
+    .c-inline-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+    .c-artifact { margin: 0 0 28px 42px; border-top: 1px solid var(--line); padding-top: 18px; }
+    .c-artifact-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .c-artifact-head h2 { margin: 0; font-size: 14px; }
+    .c-artifact .chart-bars { height: 245px; }
+    .c-insights { margin-left: 42px; display: grid; grid-template-columns: repeat(3,1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .c-insight { padding: 17px 16px; border-right: 1px solid var(--line); }
+    .c-insight:last-child { border-right: 0; }
+    .c-insight strong { display: block; font-size: 13px; margin-bottom: 7px; }
+    .c-insight p { margin: 0; font-size: 12px; line-height: 1.55; color: var(--muted); }
+    .c-followup { position: relative; max-width: 720px; margin: 28px auto 0; box-shadow: var(--shadow); }
+    .c-context { border-left: 1px solid var(--line); background: #f3f5f2; overflow: auto; padding: 18px 16px 100px; }
+    .context-section { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .context-section:first-child { padding-top: 0; }
+    .context-section h3 { margin: 0 0 10px; font-size: 12px; }
+    .context-list { display: grid; gap: 7px; }
+    .context-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #4e5852; }
+    .context-row code { color: var(--green); font-size: 11px; }
+    .sql-preview { margin: 0; padding: 10px; background: #232b27; color: #d9e5de; border-radius: 6px; font-size: 10px; line-height: 1.55; overflow: hidden; }
+
+    /* Prototype switcher */
+    .prototype-switcher {
+      position: fixed; left: 50%; bottom: 18px; z-index: 50; transform: translateX(-50%);
+      height: 48px; display: grid; grid-template-columns: 42px minmax(190px,auto) 42px; align-items: center;
+      color: white; background: #151a17; border: 1px solid #38423d; border-radius: 999px; box-shadow: 0 12px 32px rgba(0,0,0,.24);
+    }
+    .prototype-switcher button { height: 40px; border: 0; background: transparent; color: white; display: grid; place-items: center; }
+    .prototype-label { text-align: center; padding: 0 14px; font-size: 12px; font-weight: 750; white-space: nowrap; }
+    .prototype-label small { color: #9facA5; font-weight: 500; margin-left: 5px; }
+
+    @media (max-width: 1000px) {
+      .a-rail { display: none; }
+      .a-main { grid-template-columns: 340px minmax(500px,1fr); }
+      .b-header { grid-template-columns: 180px 1fr 90px; }
+      .b-shell { grid-template-columns: 50px minmax(500px,1fr) 300px; }
+      .c-main { grid-template-columns: minmax(0,1fr) 250px; }
+    }
+
+    @media (max-width: 760px) {
+      html, body { overflow: auto; }
+      .variant.active { min-height: 100vh; height: auto; }
+      .a-shell { min-height: 100vh; }
+      .a-header-right .tag, .a-header-right .secondary-btn { display: none; }
+      .final-mode .a-header-right #open-run-details { display: grid; width: 34px; padding: 0; font-size: 0; }
+      .a-main { display: block; }
+      .a-main.chat-collapsed .a-chat { display: none; }
+      .a-chat { min-height: 480px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .a-workbench { padding: 20px 16px 100px; }
+      .run-drawer { position: fixed; top: 0; width: 100%; z-index: 60; }
+      .metric-strip { grid-template-columns: 1fr; }
+      .metric-cell { border-right: 0; border-bottom: 1px solid var(--line); }
+      .metric-cell:last-child { border-bottom: 0; }
+      .b-header { grid-template-columns: 1fr auto; }
+      .b-command { display: none; }
+      .b-shell { display: block; }
+      .b-nav, .b-chat-panel { display: none; }
+      .b-canvas { padding: 20px 16px 100px; }
+      .b-summary, .b-bottom { grid-template-columns: 1fr; gap: 16px; }
+      .c-header-center { display: none; }
+      .c-main { display: block; }
+      .c-context { display: none; }
+      .c-timeline { padding: 24px 16px 100px; }
+      .c-artifact, .c-insights { margin-left: 0; }
+      .c-insights { grid-template-columns: 1fr; }
+      .c-insight { border-right: 0; border-bottom: 1px solid var(--line); }
+      .c-insight:last-child { border-bottom: 0; }
+      .chart-bars { gap: 7px; }
+      .prototype-switcher { bottom: 10px; grid-template-columns: 40px minmax(150px,auto) 40px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="variant-a" class="variant variant-a" aria-label="方案 A 三栏分析工作台">
+    <aside class="a-rail">
+      <div class="brand"><span class="brand-mark"><i data-lucide="chart-no-axes-combined"></i></span><span>Atlas BI</span></div>
+      <button class="primary-btn a-new"><i data-lucide="plus"></i>新建分析</button>
+      <div class="rail-section eyebrow">今天</div>
+      <button class="history-item active">渠道净收入同比<small>刚刚 · 已完成</small></button>
+      <button class="history-item">退款率异常定位<small>10:42 · 已完成</small></button>
+      <div class="rail-section eyebrow">昨天</div>
+      <button class="history-item">华东复购率趋势<small>昨天 · 已保存</small></button>
+      <button class="history-item">新品类增长分析<small>昨天 · 已完成</small></button>
+      <div class="rail-section eyebrow">工作区</div>
+      <button class="history-item"><i data-lucide="database"></i> 数据源</button>
+      <button class="history-item"><i data-lucide="boxes"></i> 语义建模</button>
+      <button class="history-item"><i data-lucide="bookmark"></i> 已保存分析</button>
+      <div class="a-rail-footer"><span class="avatar">陈</span><div><strong style="font-size:12px">陈默</strong><small class="muted" style="display:block">Modeler</small></div></div>
+    </aside>
+    <section class="a-shell">
+      <header class="a-header">
+        <div class="a-header-left"><strong>经营分析</strong><span class="tag"><i data-lucide="database"></i>Demo Warehouse</span></div>
+        <div class="a-header-right"><span class="tag success"><i data-lucide="shield-check"></i>语义版本 v3</span><span class="tag info"><i data-lucide="circle-check"></i>Run A-184 完成</span><button id="open-run-details" class="secondary-btn"><i data-lucide="panel-right-open"></i>运行详情</button></div>
+      </header>
+      <div class="a-main">
+        <section class="a-chat">
+          <div class="chat-titlebar"><strong>分析对话</strong><button id="collapse-chat" class="icon-btn" title="折叠对话栏"><i data-lucide="panel-left-close"></i></button></div>
+          <div class="chat-scroll">
+            <div class="message"><div class="message-head"><span class="avatar">陈</span>你</div><div class="user-bubble"><p>看一下上个月收入最好的渠道，再和去年同期比较。</p></div></div>
+            <div class="message">
+              <div class="message-head"><span class="agent-dot"><i data-lucide="sparkles"></i></span>Atlas</div>
+              <p>“收入”对应多个已发布指标。为了保证口径一致，请选择本次分析使用的指标。</p>
+              <div class="clarification"><div class="clarification-options"><button>GMV <span class="muted">· 下单金额</span></button><button class="selected">净收入 <span class="muted">· 支付金额扣除退款</span></button><button>已确认收入 <span class="muted">· 财务确认口径</span></button></div></div>
+            </div>
+            <div class="message"><div class="message-head"><span class="avatar">陈</span>你</div><div class="user-bubble"><p>用净收入。</p></div></div>
+            <div class="message"><div class="message-head"><span class="agent-dot"><i data-lucide="sparkles"></i></span>Atlas</div><p>已按净收入口径完成分析。抖音渠道排名第一，净收入为 ¥4.82M，同比增长 18.6%。右侧结果使用语义版本 v3，可查看数据、SQL 和证据。</p></div>
+          </div>
+          <div class="a-composer"><div class="composer"><button class="icon-btn" title="添加上下文"><i data-lucide="paperclip"></i></button><input value="再按地区拆分" aria-label="追问" /><button class="primary-btn" title="发送"><i data-lucide="arrow-up"></i></button></div></div>
+        </section>
+        <section class="a-workbench">
+          <div class="workbench-title"><div><span class="eyebrow">分析结果 · Run A-184</span><h1>渠道净收入同比</h1><div class="legend"><span><i style="background:var(--green)"></i>2026 年 7 月</span><span><i style="background:#b7c2bb"></i>2025 年 7 月</span></div></div><div class="workbench-actions"><button id="expand-chat" class="icon-btn" title="展开对话栏" style="display:none"><i data-lucide="panel-left-open"></i></button><button class="icon-btn" title="收藏"><i data-lucide="bookmark"></i></button><button class="secondary-btn"><i data-lucide="share-2"></i>分享</button></div></div>
+          <div class="filter-row"><span class="filter-box"><i data-lucide="sigma"></i><strong>净收入</strong></span><span class="filter-box"><i data-lucide="calendar-days"></i>2026 年 7 月</span><span class="filter-box"><i data-lucide="git-compare-arrows"></i>同比</span><span class="filter-box"><i data-lucide="split"></i>按渠道</span><button class="icon-btn" title="添加筛选"><i data-lucide="plus"></i></button></div>
+          <div class="metric-strip"><div class="metric-cell"><span class="eyebrow">净收入</span><strong>¥12.48M</strong><span class="delta-up">+11.4% YoY</span></div><div class="metric-cell"><span class="eyebrow">领先渠道</span><strong>抖音</strong><span class="muted">占比 38.6%</span></div><div class="metric-cell"><span class="eyebrow">数据新鲜度</span><strong>08:30</strong><span class="muted">2026-08-01</span></div></div>
+          <div class="artifact"><div class="artifact-head"><strong>按渠道比较</strong><div class="artifact-tabs"><button class="artifact-tab active" data-result-tab="chart">图表</button><button class="artifact-tab" data-result-tab="data">数据</button></div></div><div id="result-chart" class="artifact-body result-pane" style="padding-bottom:34px"><div class="chart-bars"><div class="bar-group"><span class="bar previous" style="height:57%"></span><span class="bar current" style="height:72%"></span><span class="bar-label">淘宝</span></div><div class="bar-group"><span class="bar previous" style="height:70%"></span><span class="bar current" style="height:86%"></span><span class="bar-label">抖音</span></div><div class="bar-group"><span class="bar previous" style="height:60%"></span><span class="bar current" style="height:64%"></span><span class="bar-label">京东</span></div><div class="bar-group"><span class="bar previous" style="height:40%"></span><span class="bar current" style="height:51%"></span><span class="bar-label">小红书</span></div><div class="bar-group"><span class="bar previous" style="height:32%"></span><span class="bar current" style="height:28%"></span><span class="bar-label">官网</span></div></div></div><div id="result-data" class="result-pane table-wrap" hidden><table><thead><tr><th>渠道</th><th class="num">净收入</th><th class="num">去年同期</th><th class="num">同比</th></tr></thead><tbody><tr><td>抖音</td><td class="num">¥4.82M</td><td class="num">¥4.06M</td><td class="num delta-up">+18.6%</td></tr><tr><td>淘宝</td><td class="num">¥3.46M</td><td class="num">¥3.08M</td><td class="num delta-up">+12.3%</td></tr><tr><td>京东</td><td class="num">¥2.66M</td><td class="num">¥2.49M</td><td class="num delta-up">+6.8%</td></tr><tr><td>小红书</td><td class="num">¥1.10M</td><td class="num">¥0.86M</td><td class="num delta-up">+27.4%</td></tr><tr><td>官网</td><td class="num">¥0.44M</td><td class="num">¥0.50M</td><td class="num delta-down">−12.3%</td></tr></tbody></table></div></div>
+          <div class="artifact"><div class="artifact-head"><strong>可验证洞察</strong><span class="tag success"><i data-lucide="badge-check"></i>3/3 有数据证据</span></div><div class="artifact-body insight-list"><div class="insight"><span class="insight-num">1</span><span>抖音净收入 <strong>¥4.82M</strong>，排名第一，同比增长 <strong>18.6%</strong>。</span></div><div class="insight"><span class="insight-num">2</span><span>小红书同比增幅最高，为 <strong>27.4%</strong>，但绝对规模仍排名第四。</span></div><div class="insight"><span class="insight-num">3</span><span>官网是唯一同比下降的渠道，净收入下降 <strong>12.3%</strong>。</span></div></div></div>
+        </section>
+        <aside class="run-drawer" aria-label="运行详情">
+          <div class="drawer-head"><strong>运行详情</strong><button id="close-run-details" class="icon-btn" title="关闭运行详情"><i data-lucide="x"></i></button></div>
+          <div class="context-section"><span class="eyebrow">运行状态</span><div class="context-list" style="margin-top:10px"><div class="context-row"><span>状态</span><span class="tag success">已完成</span></div><div class="context-row"><span>语义版本</span><code>ecommerce@3</code></div><div class="context-row"><span>修复次数</span><span>0 / 2</span></div><div class="context-row"><span>耗时</span><span>6.8s</span></div></div></div>
+          <div class="context-section"><h3>SemanticQuery</h3><div class="context-list"><div class="context-row"><span>指标</span><code>net_revenue</code></div><div class="context-row"><span>维度</span><code>channel</code></div><div class="context-row"><span>时间</span><code>previous_month</code></div><div class="context-row"><span>比较</span><code>year_over_year</code></div></div></div>
+          <div class="context-section"><h3>指标口径</h3><div style="font-size:12px;line-height:1.6;color:#4f5953"><strong>净收入</strong><br />支付金额扣除退款金额<br /><span class="muted">Owner · finance_team</span></div></div>
+          <div class="context-section"><h3>编译 SQL</h3><pre class="sql-preview">SELECT channel,
+SUM(paid_amount)
+- SUM(refunded_amount)
+AS net_revenue
+FROM analytics.orders
+WHERE order_date ...
+GROUP BY channel
+LIMIT 20</pre></div>
+          <div class="context-section"><button class="secondary-btn" style="width:100%;justify-content:center"><i data-lucide="activity"></i>查看完整轨迹</button></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <main id="variant-b" class="variant variant-b" aria-label="方案 B 画布优先">
+    <header class="b-header"><div class="brand"><span class="brand-mark"><i data-lucide="chart-no-axes-combined"></i></span><span>Atlas BI</span></div><div class="b-command"><i data-lucide="search"></i><span>提问、查找指标或跳转到分析…</span><kbd>⌘ K</kbd></div><div class="b-actions"><button class="icon-btn" title="通知"><i data-lucide="bell"></i></button><span class="avatar">陈</span></div></header>
+    <div class="b-shell">
+      <nav class="b-nav"><button class="icon-btn active" title="分析画布"><i data-lucide="chart-column-big"></i></button><button class="icon-btn" title="对话历史"><i data-lucide="messages-square"></i></button><button class="icon-btn" title="语义建模"><i data-lucide="boxes"></i></button><button class="icon-btn" title="数据源"><i data-lucide="database"></i></button><button class="icon-btn" title="已保存"><i data-lucide="bookmark"></i></button></nav>
+      <section class="b-canvas">
+        <div class="b-topline"><div><span class="eyebrow">Run B-184 · 语义版本 v3</span><h1>渠道净收入同比</h1></div><div style="display:flex;gap:8px"><span class="tag success"><i data-lucide="shield-check"></i>已验证</span><button class="icon-btn" title="更多"><i data-lucide="ellipsis"></i></button></div></div>
+        <div class="filter-row"><span class="filter-box"><i data-lucide="sigma"></i><strong>净收入</strong></span><span class="filter-box"><i data-lucide="calendar-days"></i>2026 年 7 月</span><span class="filter-box"><i data-lucide="git-compare-arrows"></i>同比</span><span class="filter-box"><i data-lucide="split"></i>按渠道</span><button class="icon-btn" title="添加筛选"><i data-lucide="plus"></i></button></div>
+        <section class="b-chart-stage"><div class="legend" style="justify-content:flex-end"><span><i style="background:var(--green)"></i>2026 年 7 月</span><span><i style="background:#b7c2bb"></i>2025 年 7 月</span></div><div class="chart-bars"><div class="bar-group"><span class="bar previous" style="height:57%"></span><span class="bar current" style="height:72%"></span><span class="bar-label">淘宝</span></div><div class="bar-group"><span class="bar previous" style="height:70%"></span><span class="bar current" style="height:86%"></span><span class="bar-label">抖音</span></div><div class="bar-group"><span class="bar previous" style="height:60%"></span><span class="bar current" style="height:64%"></span><span class="bar-label">京东</span></div><div class="bar-group"><span class="bar previous" style="height:40%"></span><span class="bar current" style="height:51%"></span><span class="bar-label">小红书</span></div><div class="bar-group"><span class="bar previous" style="height:32%"></span><span class="bar current" style="height:28%"></span><span class="bar-label">官网</span></div></div></section>
+        <section class="b-summary"><div><span class="eyebrow">净收入</span><strong>¥12.48M</strong><span class="delta-up">+11.4% YoY</span></div><div><span class="eyebrow">领先渠道</span><strong>抖音 · ¥4.82M</strong><span class="muted">占比 38.6%</span></div><div><span class="eyebrow">增长最快</span><strong>小红书 · +27.4%</strong><span class="muted">规模排名第四</span></div></section>
+        <section class="b-bottom"><div class="plain-section"><h2>数据明细</h2><div class="table-wrap"><table><thead><tr><th>渠道</th><th class="num">净收入</th><th class="num">去年同期</th><th class="num">同比</th></tr></thead><tbody><tr><td>抖音</td><td class="num">¥4.82M</td><td class="num">¥4.06M</td><td class="num delta-up">+18.6%</td></tr><tr><td>淘宝</td><td class="num">¥3.46M</td><td class="num">¥3.08M</td><td class="num delta-up">+12.3%</td></tr><tr><td>京东</td><td class="num">¥2.66M</td><td class="num">¥2.49M</td><td class="num delta-up">+6.8%</td></tr><tr><td>小红书</td><td class="num">¥1.10M</td><td class="num">¥0.86M</td><td class="num delta-up">+27.4%</td></tr><tr><td>官网</td><td class="num">¥0.44M</td><td class="num">¥0.50M</td><td class="num delta-down">−12.3%</td></tr></tbody></table></div></div><div class="plain-section"><h2>系统判断</h2><div class="insight-list"><div class="insight"><span class="insight-num">1</span><span>抖音贡献最高，并保持两位数增长。</span></div><div class="insight"><span class="insight-num">2</span><span>官网需要进一步按地区与客户类型定位下降来源。</span></div></div></div></section>
+      </section>
+      <aside class="b-chat-panel"><div class="b-chat-head"><strong>分析助手</strong><span class="tag success">完成</span></div><div class="b-chat-scroll"><div class="compact-turn"><strong>你</strong>看一下上个月收入最好的渠道，再和去年同期比较。</div><div class="compact-turn agent"><strong>Atlas</strong>“收入”存在多个口径。你选择了“净收入”。</div><div class="compact-turn agent"><strong>Atlas</strong>分析完成。抖音排名第一，净收入 ¥4.82M，同比增长 18.6%。</div><div class="compact-turn"><strong>你</strong>下一步我想按地区拆分。</div><div class="compact-turn agent"><strong>Atlas</strong>可以。我会在当前 SemanticQuery 上增加地区维度，不改变净收入口径。</div></div><div class="b-composer"><div class="composer"><input placeholder="继续追问…" /><button class="primary-btn" title="发送"><i data-lucide="arrow-up"></i></button></div></div></aside>
+    </div>
+  </main>
+
+  <main id="variant-c" class="variant variant-c" aria-label="方案 C 对话时间线">
+    <header class="c-header"><div class="brand"><span class="brand-mark"><i data-lucide="chart-no-axes-combined"></i></span><span>Atlas BI</span></div><div class="c-header-center"><button class="segmented active">分析</button><button class="segmented">语义建模</button><button class="segmented">运行记录</button></div><div style="display:flex;align-items:center;gap:9px"><span class="tag success"><i data-lucide="shield-check"></i>v3</span><button class="icon-btn" title="新建分析"><i data-lucide="plus"></i></button><span class="avatar">陈</span></div></header>
+    <div class="c-main">
+      <section class="c-timeline">
+        <div class="c-question">看一下上个月收入最好的渠道，再和去年同期比较。</div>
+        <div class="c-response"><span class="agent-dot"><i data-lucide="sparkles"></i></span><h1>抖音渠道净收入排名第一</h1><p>按你确认的“净收入”口径，抖音在 2026 年 7 月实现净收入 ¥4.82M，同比增长 18.6%。全部渠道净收入合计 ¥12.48M，同比增长 11.4%。</p><div class="c-inline-meta"><span class="tag success"><i data-lucide="badge-check"></i>结论已验证</span><span class="tag"><i data-lucide="database"></i>数据截至 08:30</span><span class="tag"><i data-lucide="fingerprint"></i>Run C-184</span></div></div>
+        <section class="c-artifact"><div class="c-artifact-head"><h2>渠道净收入同比</h2><div class="legend"><span><i style="background:var(--green)"></i>当前</span><span><i style="background:#b7c2bb"></i>同期</span></div></div><div class="chart-bars"><div class="bar-group"><span class="bar previous" style="height:57%"></span><span class="bar current" style="height:72%"></span><span class="bar-label">淘宝</span></div><div class="bar-group"><span class="bar previous" style="height:70%"></span><span class="bar current" style="height:86%"></span><span class="bar-label">抖音</span></div><div class="bar-group"><span class="bar previous" style="height:60%"></span><span class="bar current" style="height:64%"></span><span class="bar-label">京东</span></div><div class="bar-group"><span class="bar previous" style="height:40%"></span><span class="bar current" style="height:51%"></span><span class="bar-label">小红书</span></div><div class="bar-group"><span class="bar previous" style="height:32%"></span><span class="bar current" style="height:28%"></span><span class="bar-label">官网</span></div></div></section>
+        <section class="c-insights"><div class="c-insight"><strong>领先渠道</strong><p>抖音占全部渠道净收入的 38.6%，同比增加 ¥0.76M。</p></div><div class="c-insight"><strong>增长机会</strong><p>小红书增幅最高，为 27.4%，但目前规模排名第四。</p></div><div class="c-insight"><strong>风险信号</strong><p>官网同比下降 12.3%，建议继续按地区拆分。</p></div></section>
+        <div class="c-followup composer"><button class="icon-btn" title="添加上下文"><i data-lucide="paperclip"></i></button><input placeholder="追问这次分析…" value="再按地区拆分" /><button class="primary-btn" title="发送"><i data-lucide="arrow-up"></i></button></div>
+      </section>
+      <aside class="c-context">
+        <div class="context-section"><span class="eyebrow">当前分析状态</span><div class="context-list" style="margin-top:10px"><div class="context-row"><span>运行</span><span class="tag success">已完成</span></div><div class="context-row"><span>语义版本</span><code>ecommerce@3</code></div><div class="context-row"><span>修复次数</span><span>0 / 2</span></div><div class="context-row"><span>耗时</span><span>6.8s</span></div></div></div>
+        <div class="context-section"><h3>SemanticQuery</h3><div class="context-list"><div class="context-row"><span>指标</span><code>net_revenue</code></div><div class="context-row"><span>维度</span><code>channel</code></div><div class="context-row"><span>时间</span><code>previous_month</code></div><div class="context-row"><span>比较</span><code>year_over_year</code></div></div></div>
+        <div class="context-section"><h3>指标口径</h3><div style="font-size:12px;line-height:1.6;color:#4f5953"><strong>净收入</strong><br />支付金额扣除退款金额<br /><span class="muted">Owner · finance_team</span></div></div>
+        <div class="context-section"><h3>编译 SQL</h3><pre class="sql-preview">SELECT channel,
+SUM(paid_amount)
+- SUM(refunded_amount)
+AS net_revenue
+FROM analytics.orders
+WHERE order_date ...
+GROUP BY channel
+LIMIT 20</pre></div>
+        <div class="context-section"><button class="secondary-btn" style="width:100%;justify-content:center"><i data-lucide="activity"></i>查看完整轨迹</button></div>
+      </aside>
+    </div>
+  </main>
+
+  <div class="prototype-switcher" aria-label="原型方案切换">
+    <button id="prev-variant" title="上一个方案"><i data-lucide="chevron-left"></i></button>
+    <div class="prototype-label"><span id="variant-label">A · 三栏工作台</span><small>← → 切换</small></div>
+    <button id="next-variant" title="下一个方案"><i data-lucide="chevron-right"></i></button>
+  </div>
+
+  <script>
+    const finalMode = new URLSearchParams(location.search).get('final') !== '0';
+    const variants = [
+      { key: 'A', name: '三栏工作台' },
+      { key: 'B', name: '画布优先' },
+      { key: 'C', name: '对话时间线' }
+    ];
+
+    function currentKey() {
+      const key = new URLSearchParams(location.search).get('variant')?.toUpperCase();
+      return variants.some(v => v.key === key) ? key : 'A';
+    }
+
+    function renderVariant(key, updateUrl = false) {
+      document.querySelectorAll('.variant').forEach(node => node.classList.remove('active'));
+      document.getElementById(`variant-${key.toLowerCase()}`).classList.add('active');
+      const item = variants.find(v => v.key === key);
+      document.getElementById('variant-label').textContent = `${item.key} · ${item.name}`;
+      document.title = `Atlas BI · ${item.name}`;
+      if (updateUrl) {
+        const url = new URL(location.href);
+        url.searchParams.set('variant', key);
+        history.replaceState({}, '', url);
+      }
+    }
+
+    function cycle(direction) {
+      if (finalMode) return;
+      const index = variants.findIndex(v => v.key === currentKey());
+      const next = variants[(index + direction + variants.length) % variants.length];
+      renderVariant(next.key, true);
+    }
+
+    document.getElementById('prev-variant').addEventListener('click', () => cycle(-1));
+    document.getElementById('next-variant').addEventListener('click', () => cycle(1));
+    document.addEventListener('keydown', event => {
+      const tag = document.activeElement?.tagName;
+      if (['INPUT', 'TEXTAREA'].includes(tag) || document.activeElement?.isContentEditable) return;
+      if (event.key === 'ArrowLeft') cycle(-1);
+      if (event.key === 'ArrowRight') cycle(1);
+    });
+
+    const analysisMain = document.querySelector('#variant-a .a-main');
+    const collapseChat = document.getElementById('collapse-chat');
+    const expandChat = document.getElementById('expand-chat');
+    collapseChat.addEventListener('click', () => {
+      analysisMain.classList.add('chat-collapsed');
+      expandChat.style.display = 'grid';
+    });
+    expandChat.addEventListener('click', () => {
+      analysisMain.classList.remove('chat-collapsed');
+      expandChat.style.display = 'none';
+    });
+
+    document.getElementById('open-run-details').addEventListener('click', () => analysisMain.classList.add('details-open'));
+    document.getElementById('close-run-details').addEventListener('click', () => analysisMain.classList.remove('details-open'));
+
+    document.querySelectorAll('[data-result-tab]').forEach(button => {
+      button.addEventListener('click', () => {
+        const tab = button.dataset.resultTab;
+        document.querySelectorAll('[data-result-tab]').forEach(item => item.classList.toggle('active', item === button));
+        document.getElementById('result-chart').hidden = tab !== 'chart';
+        document.getElementById('result-data').hidden = tab !== 'data';
+      });
+    });
+
+    if (finalMode) document.body.classList.add('final-mode');
+    renderVariant(finalMode ? 'A' : currentKey());
+    if (finalMode) document.title = 'Atlas BI · 最终整合原型';
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
