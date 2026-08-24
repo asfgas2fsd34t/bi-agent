@@ -1,6 +1,6 @@
 import type { AgentEvent } from "@contracts/typescript/analysis-run";
 
-import type { AnalysisRunSource } from "./analysis-run-source";
+import type { AnalysisRunSource, QueryPatch } from "./analysis-run-source";
 
 interface StartResponse {
   run_id: string;
@@ -14,6 +14,7 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export function createHttpAnalysisRunSource(): AnalysisRunSource {
   return {
+    // 场景：用户提交新的分析问题。
     async start({ question }) {
       const response = await fetch("/api/v1/demo/runs", {
         method: "POST",
@@ -28,8 +29,15 @@ export function createHttpAnalysisRunSource(): AnalysisRunSource {
       const events = await readJson<AgentEvent[]>(response);
       yield* events;
     },
-    async *applyQueryPatch() {
-      // The contract baseline only exposes the one-way demo event path.
+    // 场景：用户在查询编辑区应用修改。
+    async *applyQueryPatch(runId, patch: QueryPatch, afterSequence) {
+      const response = await fetch(`/api/v1/runs/${encodeURIComponent(runId)}/query?after_sequence=${afterSequence}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const events = await readJson<AgentEvent[]>(response);
+      yield* events;
     },
     async *submitClarification() {
       // The contract baseline only exposes the one-way demo event path.

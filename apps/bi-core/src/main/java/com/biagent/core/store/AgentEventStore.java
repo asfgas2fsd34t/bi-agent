@@ -23,4 +23,9 @@ public class AgentEventStore {
                 .sorted(Comparator.comparingInt(AgentEvent::sequence))
                 .toList();
     }
+
+    public int lastSequence(String runId) {
+        var events = eventsByRun.get(runId);
+        return events == null || events.isEmpty() ? 0 : events.lastKey();
+    }
 }
