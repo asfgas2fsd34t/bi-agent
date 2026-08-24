@@ -12,13 +12,16 @@ const props = defineProps<{
   rows: readonly ResultRow[];
   kind: ChartIntent["kind"];
   categoryField: string;
+  categoryFields: readonly string[];
   series: readonly ChartSeries[];
 }>();
 
 use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
 
 const option = computed(() => {
-  const categories = props.rows.map((row) => String(row[props.categoryField] ?? ""));
+  const categoryFields = props.categoryFields.length ? props.categoryFields : [props.categoryField];
+  const categoryLabel = (row: ResultRow) => categoryFields.map((field) => String(row[field] ?? "")).filter(Boolean).join(" · ");
+  const categories = props.rows.map(categoryLabel);
 
   if (props.kind === "pie") {
     const firstSeries = props.series[0];
@@ -30,7 +33,7 @@ const option = computed(() => {
         name: firstSeries?.name ?? "值",
         type: "pie",
         radius: "60%",
-        data: props.rows.map((row) => ({ name: String(row[props.categoryField] ?? ""), value: firstSeries ? row[firstSeries.field] : 0 })),
+        data: props.rows.map((row) => ({ name: categoryLabel(row), value: firstSeries ? row[firstSeries.field] : 0 })),
       }],
     };
   }

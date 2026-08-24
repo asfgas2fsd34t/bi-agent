@@ -98,7 +98,7 @@ async function openHistory(item: { id: string; question: string }) {
             <span class="eyebrow">Fixture Lab</span>
             <h2 id="fixture-heading">运行状态</h2>
           </div>
-          <span class="fixture-count">9</span>
+          <span class="fixture-count">{{ fixtureScenarios.length }}</span>
         </div>
         <div class="scenario-grid">
           <button

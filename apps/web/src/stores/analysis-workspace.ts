@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, shallowRef, type DeepReadonly } from "vue";
 
 import { createAnalysisWorkspace, type AnalysisRunSnapshot, type AnalysisWorkspace } from "@/modules/analysis/analysis-workspace";
+import type { QueryPatch } from "@/modules/analysis/analysis-run-source";
 import { createFixtureAnalysisRunSource, type FixtureScenarioId } from "@/modules/analysis/fixture-analysis-run-source";
 import { createHttpAnalysisRunSource } from "@/modules/analysis/http-analysis-run-source";
 
@@ -47,6 +48,7 @@ export const useAnalysisWorkspaceStore = defineStore("analysis-workspace", () =>
     snapshot,
     isLoading,
     loadScenario,
+    applyQueryPatch: (patch: QueryPatch) => runCommand((active) => active.applyQueryPatch(patch)),
     submitClarification: (optionId: string) => runCommand((active) => active.submitClarification(optionId)),
     cancel: () => runCommand((active) => active.cancel()),
     retry: () => runCommand((active) => active.retry()),

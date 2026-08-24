@@ -17,10 +17,40 @@ describe("Analysis Workspace page", () => {
 
     expect(await screen.findByRole("region", { name: "图表" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "渠道净收入同比" })).toBeTruthy();
-    expect(screen.getByRole("region", { name: "数据" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "数据表" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "SemanticQuery" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "编译 SQL" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "可验证洞察" })).toBeTruthy();
+  });
+
+  it("applies query controls through the Analysis Workspace interface", async () => {
+    await renderPage();
+    await screen.findByRole("region", { name: "图表" });
+
+    await chooseQueryOption("指标", "GMV");
+    await chooseQueryOption("时间范围", "2026 年 1-8 月");
+    await chooseQueryOption("比较方式", "环比");
+    await fireEvent.click(screen.getByLabelText("地区"));
+    await fireEvent.update(screen.getByLabelText("地区过滤"), "华东");
+    await fireEvent.click(screen.getByRole("button", { name: "应用查询" }));
+    expect(await screen.findByRole("heading", { name: "渠道、地区GMV环比" })).toBeTruthy();
+    expect(screen.getByText("year_to_date")).toBeTruthy();
+    expect(screen.getByText("region")).toBeTruthy();
+    expect(screen.getByText(/region = :region/)).toBeTruthy();
+  });
+
+  it("switches between chart and table result views", async () => {
+    await renderPage();
+
+    expect(await screen.findByRole("region", { name: "图表" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "数据" })).toBeNull();
+
+    await fireEvent.click(screen.getByRole("button", { name: "数据表" }));
+    expect(screen.getByRole("region", { name: "数据" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "图表" })).toBeNull();
+
+    await fireEvent.click(screen.getByRole("button", { name: "图表" }));
+    expect(screen.getByRole("region", { name: "图表" })).toBeTruthy();
   });
 
   it("switches between clarification and denied fixtures through named controls", async () => {
@@ -50,6 +80,18 @@ describe("Analysis Workspace page", () => {
     await fireEvent.click(await screen.findByRole("button", { name: "重新运行" }));
     expect(await screen.findByRole("heading", { name: "渠道净收入同比" })).toBeTruthy();
     await waitFor(() => expect(screen.queryByText("DATABASE_ERROR")).toBeNull());
+  });
+
+  it("exposes truncated and compile failure fixtures in the lab", async () => {
+    await renderPage();
+
+    await fireEvent.click(screen.getByRole("button", { name: "载入截断场景" }));
+    expect(await screen.findByText("RESULT_TRUNCATED")).toBeTruthy();
+    expect(screen.getByText(/结果已截断/)).toBeTruthy();
+
+    await fireEvent.click(screen.getByRole("button", { name: "载入编译失败场景" }));
+    expect(await screen.findByText("QUERY_COMPILE_FAILED")).toBeTruthy();
+    expect(screen.getByText(/调整维度组合/)).toBeTruthy();
   });
 
   it("keeps the product sidebar while the right page switches to Semantic Studio", async () => {
@@ -97,6 +139,32 @@ describe("Analysis Workspace page", () => {
     await fireEvent.keyDown(splitter, { key: "End" });
     expect(splitter.getAttribute("aria-valuenow")).toBe("55");
   });
+
+  it("tracks pointer resizing in tenth-percent increments", async () => {
+    await renderPage();
+    const splitter = screen.getByRole("separator", { name: "调整对话区宽度" });
+    const layout = splitter.parentElement as HTMLElement;
+
+    vi.spyOn(layout, "getBoundingClientRect").mockReturnValue({
+      bottom: 800,
+      height: 800,
+      left: 100,
+      right: 1107,
+      toJSON: () => ({}),
+      top: 0,
+      width: 1007,
+      x: 100,
+      y: 0,
+    });
+
+    await fireEvent.pointerDown(splitter, { clientX: 454 });
+    expect(splitter.getAttribute("aria-valuenow")).toBe("35.1");
+
+    await fireEvent.pointerMove(window, { clientX: 455 });
+    expect(splitter.getAttribute("aria-valuenow")).toBe("35.2");
+
+    await fireEvent.pointerUp(window);
+  });
 });
 
 async function renderPage() {
@@ -106,4 +174,10 @@ async function renderPage() {
       plugins: [createPinia(), router],
     },
   });
+}
+
+async function chooseQueryOption(label: string, option: string) {
+  await fireEvent.click(screen.getByRole("button", { name: label }));
+  await fireEvent.click(screen.getByRole("option", { name: option }));
+  await waitFor(() => expect(screen.getByRole("button", { name: label }).textContent ?? "").toContain(option));
 }

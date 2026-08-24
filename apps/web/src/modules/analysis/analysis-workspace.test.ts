@@ -11,6 +11,8 @@ describe("Analysis Workspace", () => {
     ["clarification", "awaiting_clarification"],
     ["success", "completed"],
     ["empty", "empty"],
+    ["truncated", "completed"],
+    ["compile_failed", "failed"],
     ["denied", "rejected"],
     ["failed", "failed"],
     ["cancelled", "cancelled"],
@@ -47,6 +49,24 @@ describe("Analysis Workspace", () => {
     expect(workspace.snapshot.value.verifiedFacts?.facts.find((fact) => fact.key === "gmv")?.label).toBe("GMV");
   });
 
+  it("rebuilds artifacts from a structured query patch", async () => {
+    const workspace = createAnalysisWorkspace(createFixtureAnalysisRunSource("success"));
+    await workspace.start("渠道净收入同比");
+
+    await workspace.applyQueryPatch({
+      metric: "gmv",
+      dimensions: ["region"],
+      timeRange: "year_to_date",
+      comparison: "month_over_month",
+      filters: [{ field: "region", operator: "equals", value: "华东" }],
+    });
+
+    expect(workspace.snapshot.value.queryPatch.filters).toEqual([{ field: "region", operator: "equals", value: "华东" }]);
+    expect(workspace.snapshot.value.semanticQuery).toMatchObject({ metric: "gmv", dimensions: ["region"], timeRange: "year_to_date", comparison: "month_over_month" });
+    expect(workspace.snapshot.value.data?.columns).toEqual(["region", "current", "previous", "change"]);
+    expect(workspace.snapshot.value.data?.rows).toHaveLength(1);
+  });
+
   it("cancels and retries through the Analysis Workspace Interface", async () => {
     const running = createAnalysisWorkspace(createFixtureAnalysisRunSource("streaming"));
     await running.start("渠道净收入同比");
@@ -73,6 +93,7 @@ describe("Analysis Workspace", () => {
         yield duplicate;
         yield older;
       },
+      async *applyQueryPatch() {},
       async *submitClarification() {},
       async *cancel() {},
       async *retry() {},

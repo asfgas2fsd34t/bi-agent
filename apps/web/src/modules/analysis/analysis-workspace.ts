@@ -1,7 +1,7 @@
 import type { AgentEvent, AnalysisRunStatus, ChartIntent, ResultRow, SemanticQuery, VerifiedFacts } from "@contracts/typescript/analysis-run";
 import { readonly, shallowRef, type DeepReadonly, type Ref } from "vue";
 
-import type { AnalysisRunSource } from "./analysis-run-source";
+import type { AnalysisRunSource, QueryPatch } from "./analysis-run-source";
 
 type EventPayload<T extends AgentEvent["event_type"]> = Extract<AgentEvent, { event_type: T }>["payload"];
 
@@ -12,6 +12,8 @@ export interface AnalysisRunSnapshot {
   statusLabel: string;
   statusDetail?: string;
   lastSequence: number;
+  semanticVersion?: string;
+  queryPatch: QueryPatch;
   semanticQuery?: SemanticQuery;
   sql?: EventPayload<"sql">;
   data?: { columns: string[]; rows: ResultRow[]; truncated: boolean };
@@ -26,6 +28,7 @@ export interface AnalysisRunSnapshot {
 export interface AnalysisWorkspace {
   snapshot: DeepReadonly<Ref<AnalysisRunSnapshot>>;
   start(question: string): Promise<void>;
+  applyQueryPatch(patch: QueryPatch): Promise<void>;
   submitClarification(optionId: string): Promise<void>;
   cancel(): Promise<void>;
   retry(): Promise<void>;
@@ -48,8 +51,13 @@ export function createAnalysisWorkspace(source: AnalysisRunSource): AnalysisWork
     snapshot: readonly(snapshot),
     async start(question) {
       const run = await source.start({ question });
-      snapshot.value = { ...initialSnapshot(), runId: run.runId, question };
+      snapshot.value = { ...initialSnapshot(), runId: run.runId, question, semanticVersion: run.semanticVersion };
       await consume(source.observe(run.runId));
+    },
+    async applyQueryPatch(patch) {
+      const runId = activeRunId();
+      snapshot.value = { ...snapshot.value, queryPatch: mergeQueryPatch(snapshot.value.queryPatch, patch) };
+      await consume(source.applyQueryPatch(runId, patch, snapshot.value.lastSequence));
     },
     async submitClarification(optionId) {
       await consume(source.submitClarification(activeRunId(), optionId, snapshot.value.lastSequence));
@@ -68,7 +76,7 @@ export function createAnalysisWorkspace(source: AnalysisRunSource): AnalysisWork
 }
 
 function initialSnapshot(): AnalysisRunSnapshot {
-  return { runId: null, question: "", status: "queued", statusLabel: "准备分析", lastSequence: 0, insights: [], warnings: [], errors: [] };
+  return { runId: null, question: "", status: "queued", statusLabel: "准备分析", lastSequence: 0, queryPatch: {}, insights: [], warnings: [], errors: [] };
 }
 
 function applyEvent(snapshot: AnalysisRunSnapshot, event: AgentEvent): AnalysisRunSnapshot {
@@ -76,6 +84,23 @@ function applyEvent(snapshot: AnalysisRunSnapshot, event: AgentEvent): AnalysisR
   const next = { ...snapshot, lastSequence: event.sequence };
   switch (event.event_type) {
     case "status":
+      if (["queued", "running", "recovering"].includes(event.payload.status)) {
+        return {
+          ...next,
+          status: event.payload.status,
+          statusLabel: event.payload.label,
+          statusDetail: event.payload.detail,
+          semanticQuery: undefined,
+          sql: undefined,
+          data: undefined,
+          verifiedFacts: undefined,
+          chart: undefined,
+          clarification: undefined,
+          insights: [],
+          warnings: [],
+          errors: [],
+        };
+      }
       return {
         ...next,
         status: event.payload.status,
@@ -84,7 +109,13 @@ function applyEvent(snapshot: AnalysisRunSnapshot, event: AgentEvent): AnalysisR
         errors: event.payload.status === "running" ? [] : snapshot.errors,
       };
     case "clarification": return { ...next, clarification: event.payload };
-    case "semantic_query": return { ...next, semanticQuery: event.payload, clarification: undefined };
+    case "semantic_query":
+      return {
+        ...next,
+        queryPatch: { ...next.queryPatch, ...event.payload, dimensions: [...event.payload.dimensions] },
+        semanticQuery: event.payload,
+        clarification: undefined,
+      };
     case "sql": return { ...next, sql: event.payload };
     case "data": return { ...next, data: event.payload };
     case "verified_facts": return { ...next, verifiedFacts: event.payload };
@@ -93,4 +124,13 @@ function applyEvent(snapshot: AnalysisRunSnapshot, event: AgentEvent): AnalysisR
     case "warning": return { ...next, warnings: [...snapshot.warnings, event.payload] };
     case "error": return { ...next, errors: [...snapshot.errors, event.payload] };
   }
+}
+
+function mergeQueryPatch(current: QueryPatch, patch: QueryPatch): QueryPatch {
+  return {
+    ...current,
+    ...patch,
+    ...(patch.dimensions ? { dimensions: [...patch.dimensions] } : {}),
+    ...(patch.filters ? { filters: patch.filters.map((filter) => ({ ...filter })) } : {}),
+  };
 }

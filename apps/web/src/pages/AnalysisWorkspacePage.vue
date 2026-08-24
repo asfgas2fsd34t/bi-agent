@@ -20,8 +20,11 @@ import {
   TriangleAlert,
 } from "lucide-vue-next";
 import { storeToRefs } from "pinia";
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
+import QuerySelect from "@/components/QuerySelect.vue";
+import type { QueryPatch } from "@/modules/analysis/analysis-run-source";
+import { fixtureComparisonLabels, fixtureDimensionLabels, fixtureMetricLabels, fixtureTimeRangeLabels } from "@/modules/analysis/query-options";
 import { useAnalysisWorkspaceStore } from "@/stores/analysis-workspace";
 import type { ChartIntent, ResultRow, VerifiedFact } from "@contracts/typescript/analysis-run";
 
@@ -31,7 +34,20 @@ const { snapshot, isLoading } = storeToRefs(store);
 const draft = ref("再按地区拆分");
 const workspaceLayout = ref<HTMLElement | null>(null);
 const chatWidth = ref(35);
+const resultView = ref<"chart" | "table">("chart");
+const queryDraft = reactive({
+  metric: "net_revenue",
+  timeRange: "previous_month",
+  comparison: "year_over_year",
+  dimensions: ["channel"] as string[],
+  regionFilter: "",
+});
 let removeResizeListeners: (() => void) | null = null;
+
+const metricOptions = Object.entries(fixtureMetricLabels).map(([value, label]) => ({ value, label }));
+const timeRangeOptions = Object.entries(fixtureTimeRangeLabels).map(([value, label]) => ({ value, label }));
+const comparisonOptions = Object.entries(fixtureComparisonLabels).map(([value, label]) => ({ value, label }));
+const dimensionOptions = Object.entries(fixtureDimensionLabels).map(([value, label]) => ({ value, label }));
 
 const isBusy = computed(() => ["queued", "running", "recovering"].includes(snapshot.value?.status ?? ""));
 const statusTone = computed(() => {
@@ -51,15 +67,36 @@ const statusTone = computed(() => {
 
 // 共享契约只提供通用事实集合，页面在展示层按稳定 key 选择当前卡片。
 const factByKey = (key: string): VerifiedFact | undefined => snapshot.value?.verifiedFacts?.facts.find((fact) => fact.key === key);
-const metricFact = computed(() => factByKey(snapshot.value?.semanticQuery?.metric ?? "net_revenue"));
+const metricFact = computed(() => factByKey(snapshot.value?.semanticQuery?.metric ?? snapshot.value?.queryPatch.metric ?? "net_revenue"));
 const leaderFact = computed(() => factByKey("top_channel"));
 const freshnessFact = computed(() => factByKey("data_freshness"));
-const metricLabel = computed(() => metricFact.value?.label ?? "净收入");
-const analysisTitle = computed(() => `渠道${metricLabel.value}同比`);
+const metricLabel = computed(() => metricFact.value?.label ?? fixtureMetricLabels[snapshot.value?.queryPatch.metric as keyof typeof fixtureMetricLabels] ?? "净收入");
+const queryDimensions = computed(() => snapshot.value?.semanticQuery?.dimensions ?? snapshot.value?.queryPatch.dimensions ?? ["channel"]);
+const dimensionLabel = computed(() => queryDimensions.value.map((dimension) => fixtureDimensionLabels[dimension as keyof typeof fixtureDimensionLabels] ?? dimension).join("、") || "渠道");
+const comparisonLabel = computed(() => {
+  const comparison = snapshot.value?.semanticQuery?.comparison ?? snapshot.value?.queryPatch.comparison ?? "year_over_year";
+  return fixtureComparisonLabels[comparison as keyof typeof fixtureComparisonLabels] ?? comparison;
+});
+const timeRangeLabel = computed(() => {
+  const timeRange = snapshot.value?.semanticQuery?.timeRange ?? snapshot.value?.queryPatch.timeRange ?? "previous_month";
+  return fixtureTimeRangeLabels[timeRange as keyof typeof fixtureTimeRangeLabels] ?? timeRange;
+});
+const analysisTitle = computed(() => `${dimensionLabel.value}${metricLabel.value}${comparisonLabel.value}`);
+const analysisSummary = computed(() => `${timeRangeLabel.value} · 按${queryDimensions.value.map((dimension) => fixtureDimensionLabels[dimension as keyof typeof fixtureDimensionLabels] ?? dimension).join("、")} · ${comparisonLabel.value}`);
 
 onMounted(() => {
   if (!snapshot.value) void store.loadScenario("success");
 });
+
+watch(snapshot, (next) => {
+  if (!next) return;
+  const query = next.semanticQuery ?? next.queryPatch;
+  if (query.metric) queryDraft.metric = query.metric;
+  if (query.timeRange) queryDraft.timeRange = query.timeRange;
+  if (query.comparison) queryDraft.comparison = query.comparison;
+  if (query.dimensions?.length) queryDraft.dimensions = [...query.dimensions];
+  queryDraft.regionFilter = next.queryPatch.filters?.find((filter) => filter.field === "region")?.value ?? "";
+}, { immediate: true });
 
 onBeforeUnmount(stopResize);
 
@@ -70,8 +107,23 @@ function submitFollowup() {
   void store.submitFollowup(question);
 }
 
-function clampChatWidth(value: number): number {
-  return Math.min(55, Math.max(25, Math.round(value)));
+function applyQuery() {
+  const dimensions = queryDraft.dimensions.length ? [...queryDraft.dimensions] : ["channel"];
+  const filters: QueryPatch["filters"] = queryDraft.regionFilter.trim()
+    ? [{ field: "region", operator: "equals", value: queryDraft.regionFilter.trim() }]
+    : [];
+  void store.applyQueryPatch({
+    metric: queryDraft.metric,
+    timeRange: queryDraft.timeRange,
+    comparison: queryDraft.comparison,
+    dimensions,
+    filters,
+  });
+}
+
+function clampChatWidth(value: number, precision = 0): number {
+  const factor = 10 ** precision;
+  return Math.min(55, Math.max(25, Math.round(value * factor) / factor));
 }
 
 function adjustChatWidth(delta: number) {
@@ -86,7 +138,7 @@ function updateChatWidthFromPointer(event: PointerEvent) {
   const splitterWidth = 7;
   const availableWidth = Math.max(1, bounds.width - splitterWidth);
   const nextWidth = ((event.clientX - bounds.left - splitterWidth / 2) / availableWidth) * 100;
-  chatWidth.value = clampChatWidth(nextWidth);
+  chatWidth.value = clampChatWidth(nextWidth, 1);
 }
 
 function stopResize() {
@@ -145,6 +197,23 @@ function formatChange(row: ResultRow): string {
   return `${value >= 0 ? "+" : ""}${value}%`;
 }
 
+function columnLabel(column: string): string {
+  return {
+    channel: "渠道",
+    region: "地区",
+    category: "品类",
+    current: "当前值",
+    previous: "对比值",
+    change: "变化",
+  }[column] ?? column;
+}
+
+function formatCell(row: ResultRow, column: string): string {
+  if (column === "current" || column === "previous") return formatNumber(row, column);
+  if (column === "change") return formatChange(row);
+  return cellText(row, column);
+}
+
 function changeTone(row: ResultRow): "positive" | "negative" | undefined {
   const value = cellNumber(row, "change");
   return value === null ? undefined : value >= 0 ? "positive" : "negative";
@@ -172,7 +241,7 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
           <span class="source-label"><Database :size="14" />Demo Warehouse</span>
         </div>
         <div class="topbar-meta">
-          <span class="semantic-badge"><ShieldCheck :size="15" />ecommerce@3</span>
+          <span class="semantic-badge"><ShieldCheck :size="15" />{{ snapshot?.semanticVersion ?? "语义版本待确认" }}</span>
           <span class="run-badge" :class="statusTone">
             <LoaderCircle v-if="isBusy" :size="15" class="spin" />
             <CheckCircle2 v-else-if="snapshot?.status === 'completed'" :size="15" />
@@ -215,10 +284,10 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
                 </div>
               </template>
               <template v-else-if="snapshot.status === 'completed'">
-                <p>已按{{ metricLabel }}口径完成分析。抖音渠道排名第一，结果已通过语义版本与数据证据校验。</p>
+                <p>已按{{ metricLabel }}口径完成分析。{{ snapshot.insights[0]?.claim || "结果已通过语义版本与数据证据校验。" }}</p>
               </template>
               <template v-else-if="snapshot.errors.length">
-                <p>{{ snapshot.errors[0]?.title }}。{{ snapshot.errors[0]?.action }}</p>
+                <p>{{ snapshot.errors[0]?.title }}。请查看右侧错误详情。</p>
               </template>
               <template v-else-if="snapshot.status === 'empty'">
                 <p>查询已经完成，但当前时间范围和权限条件下没有数据。</p>
@@ -267,7 +336,7 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
             <div>
               <span class="eyebrow">AnalysisRun · {{ snapshot?.runId ?? "pending" }}</span>
               <h1>{{ analysisTitle }}</h1>
-              <p>2026 年 7 月 · 按渠道 · 与去年同期比较</p>
+              <p>{{ analysisSummary }}</p>
             </div>
             <button v-if="snapshot?.status === 'failed'" class="secondary-command" type="button" @click="store.retry()">
               <RotateCcw :size="16" />重新运行
@@ -276,6 +345,39 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
               <RefreshCw :size="16" />查看恢复场景
             </button>
           </div>
+
+          <form class="query-controls" aria-label="查询控件" @submit.prevent="applyQuery">
+            <div class="query-control-heading">
+              <div><span class="eyebrow">SemanticQuery</span><strong>调整查询</strong></div>
+              <span>仅使用已发布语义成员</span>
+            </div>
+            <div class="query-control-grid">
+              <div class="query-control-field">
+                <span>指标</span>
+                <QuerySelect v-model="queryDraft.metric" label="指标" :options="metricOptions" />
+              </div>
+              <div class="query-control-field">
+                <span>时间范围</span>
+                <QuerySelect v-model="queryDraft.timeRange" label="时间范围" :options="timeRangeOptions" />
+              </div>
+              <div class="query-control-field">
+                <span>比较方式</span>
+                <QuerySelect v-model="queryDraft.comparison" label="比较方式" :options="comparisonOptions" />
+              </div>
+              <label>
+                <span>地区过滤</span>
+                <input v-model="queryDraft.regionFilter" aria-label="地区过滤" placeholder="全部地区" />
+              </label>
+            </div>
+            <fieldset class="dimension-picker">
+              <legend>维度</legend>
+              <label v-for="option in dimensionOptions" :key="option.value" class="dimension-option">
+                <input v-model="queryDraft.dimensions" type="checkbox" :value="option.value" :aria-label="option.label" />
+                <span>{{ option.label }}</span>
+              </label>
+            </fieldset>
+            <button class="primary-command query-apply" type="submit"><Activity :size="15" />应用查询</button>
+          </form>
 
           <div v-if="snapshot" class="status-banner" :class="statusTone">
             <span class="status-icon">
@@ -298,30 +400,36 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
 
           <template v-if="snapshot?.data?.rows.length">
             <section v-if="snapshot.verifiedFacts" class="metric-strip" aria-label="关键指标">
-              <div><span class="eyebrow">{{ metricFact?.label ?? "核心指标" }}</span><strong>{{ metricFact?.formattedValue ?? factValueText(metricFact) }}</strong><small v-if="metricFact?.change !== undefined" class="positive">{{ metricFact.change >= 0 ? "+" : "" }}{{ metricFact.change }}% YoY</small></div>
+              <div><span class="eyebrow">{{ metricFact?.label ?? "核心指标" }}</span><strong>{{ metricFact?.formattedValue ?? factValueText(metricFact) }}</strong><small v-if="metricFact?.change !== undefined" class="positive">{{ metricFact.change >= 0 ? "+" : "" }}{{ metricFact.change }}% {{ comparisonLabel }}</small></div>
               <div><span class="eyebrow">{{ leaderFact?.label ?? "领先项" }}</span><strong>{{ factValueText(leaderFact) }}</strong><small>{{ leaderFact?.formattedValue ?? "—" }}<template v-if="factAttributeText(leaderFact, 'share')"> · {{ factAttributeText(leaderFact, "share") }}%</template></small></div>
               <div><span class="eyebrow">{{ freshnessFact?.label ?? "数据时间" }}</span><strong>{{ freshnessFact?.formattedValue ?? factValueText(freshnessFact) }}</strong><small>{{ factAttributeText(freshnessFact, "date") || snapshot.verifiedFacts.asOf }}</small></div>
             </section>
 
-            <section v-if="snapshot.chart" class="artifact chart-artifact" aria-label="图表">
-              <div class="artifact-heading"><div><span class="artifact-icon"><BarChart3 :size="16" /></span><h2>图表</h2></div><span>{{ chartKindLabel(snapshot.chart.kind) }} · 按渠道比较</span></div>
+            <div class="result-view-switch" aria-label="结果视图">
+              <button type="button" :aria-pressed="resultView === 'chart'" :class="{ active: resultView === 'chart' }" @click="resultView = 'chart'"><BarChart3 :size="15" />图表</button>
+              <button type="button" :aria-pressed="resultView === 'table'" :class="{ active: resultView === 'table' }" @click="resultView = 'table'"><Table2 :size="15" />数据表</button>
+            </div>
+
+            <section v-if="snapshot.chart && resultView === 'chart'" class="artifact chart-artifact" aria-label="图表">
+              <div class="artifact-heading"><div><span class="artifact-icon"><BarChart3 :size="16" /></span><h2>图表</h2></div><span>{{ chartKindLabel(snapshot.chart.kind) }} · 按{{ dimensionLabel }}比较</span></div>
               <AnalysisChart
                 v-if="snapshot.chart.kind !== 'table'"
                 :rows="snapshot.data.rows"
                 :kind="snapshot.chart.kind"
                 :category-field="snapshot.chart.categoryField"
+                :category-fields="queryDimensions"
                 :series="snapshot.chart.series"
               />
             </section>
 
-            <section class="artifact" aria-label="数据">
-              <div class="artifact-heading"><div><span class="artifact-icon blue"><Table2 :size="16" /></span><h2>数据</h2></div><span>{{ snapshot.data.rows.length }} 行 · 未截断</span></div>
+            <section v-if="resultView === 'table'" class="artifact" aria-label="数据">
+              <div class="artifact-heading"><div><span class="artifact-icon blue"><Table2 :size="16" /></span><h2>数据</h2></div><span>{{ snapshot.data.rows.length }} 行 · {{ snapshot.data.truncated ? "结果已截断" : "未截断" }}</span></div>
               <div class="data-table-wrap">
                 <table>
-                  <thead><tr><th>渠道</th><th>{{ metricLabel }}</th><th>去年同期</th><th>同比</th></tr></thead>
+                  <thead><tr><th v-for="column in snapshot.data.columns" :key="column">{{ columnLabel(column) }}</th></tr></thead>
                   <tbody>
-                    <tr v-for="row in snapshot.data.rows" :key="cellText(row, 'channel')">
-                      <td><strong>{{ cellText(row, "channel") }}</strong></td><td>{{ formatNumber(row, "current") }}</td><td>{{ formatNumber(row, "previous") }}</td><td :class="changeTone(row)">{{ formatChange(row) }}</td>
+                    <tr v-for="(row, index) in snapshot.data.rows" :key="`${cellText(row, queryDimensions[0] ?? 'channel')}-${index}`">
+                      <td v-for="column in snapshot.data.columns" :key="column" :class="column === 'change' ? changeTone(row) : undefined">{{ formatCell(row, column) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -334,9 +442,12 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
               <div class="artifact-heading"><div><span class="artifact-icon amber"><Activity :size="16" /></span><h2>SemanticQuery</h2></div><span>Schema valid</span></div>
               <dl class="query-grid">
                 <div><dt>metric</dt><dd>{{ snapshot.semanticQuery.metric }}</dd></div>
-                <div><dt>dimensions</dt><dd>{{ snapshot.semanticQuery.dimensions.join(", ") }}</dd></div>
+                <div><dt>dimensions</dt><dd class="query-dimensions"><span v-for="dimension in snapshot.semanticQuery.dimensions" :key="dimension">{{ dimension }}</span></dd></div>
                 <div><dt>timeRange</dt><dd>{{ snapshot.semanticQuery.timeRange }}</dd></div>
                 <div><dt>comparison</dt><dd>{{ snapshot.semanticQuery.comparison }}</dd></div>
+                <div><dt>指标口径</dt><dd>{{ metricLabel }}</dd></div>
+                <div><dt>语义版本</dt><dd>{{ snapshot.semanticVersion ?? "待确认" }} · Published</dd></div>
+                <div v-if="snapshot.queryPatch.filters?.length"><dt>filters</dt><dd>{{ snapshot.queryPatch.filters.map((filter) => `${filter.field} = ${filter.value}`).join(", ") }}</dd></div>
               </dl>
             </section>
 

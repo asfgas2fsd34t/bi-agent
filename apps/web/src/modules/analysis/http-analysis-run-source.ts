@@ -4,6 +4,7 @@ import type { AnalysisRunSource } from "./analysis-run-source";
 
 interface StartResponse {
   run_id: string;
+  semantic_version?: string;
 }
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -20,12 +21,15 @@ export function createHttpAnalysisRunSource(): AnalysisRunSource {
         body: JSON.stringify({ question }),
       });
       const run = await readJson<StartResponse>(response);
-      return { runId: run.run_id };
+      return { runId: run.run_id, semanticVersion: run.semantic_version };
     },
     async *observe(runId) {
       const response = await fetch(`/api/v1/runs/${encodeURIComponent(runId)}/events`);
       const events = await readJson<AgentEvent[]>(response);
       yield* events;
+    },
+    async *applyQueryPatch() {
+      // The contract baseline only exposes the one-way demo event path.
     },
     async *submitClarification() {
       // The contract baseline only exposes the one-way demo event path.
