@@ -16,8 +16,7 @@
     "test:java": "mvn -f apps/bi-core/pom.xml test",
     "test:contracts": "pnpm test && pnpm test:python && pnpm test:java",
     "dev:all": "docker compose -f infra/docker-compose.yml up --build",
-    "services:up": "docker compose -f infra/docker-compose.yml up --build -d && pnpm services:health",
-    "services:down": "docker compose -f infra/docker-compose.yml down",
-    "services:health": "node scripts/check-services.mjs"
+    "services:up": "docker compose -f infra/docker-compose.yml up --build --wait",
+    "services:down": "docker compose -f infra/docker-compose.yml down"
   }
 }

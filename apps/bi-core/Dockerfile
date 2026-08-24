@@ -4,7 +4,6 @@ WORKDIR /workspace
 COPY apps/bi-core/pom.xml apps/bi-core/pom.xml
 RUN mvn -f apps/bi-core/pom.xml dependency:go-offline -DskipTests
 COPY apps/bi-core/src apps/bi-core/src
-COPY contracts contracts
 RUN mvn -f apps/bi-core/pom.xml package -DskipTests
 
 FROM eclipse-temurin:21-jre-jammy

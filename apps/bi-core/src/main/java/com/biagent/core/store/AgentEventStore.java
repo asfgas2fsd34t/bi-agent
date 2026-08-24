@@ -3,7 +3,6 @@ package com.biagent.core.store;
 import com.biagent.core.contracts.AgentEvent;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,9 +18,8 @@ public class AgentEventStore {
     }
 
     public List<AgentEvent> findByRunId(String runId) {
-        return eventsByRun.getOrDefault(runId, new ConcurrentSkipListMap<>()).values().stream()
-                .sorted(Comparator.comparingInt(AgentEvent::sequence))
-                .toList();
+        var events = eventsByRun.get(runId);
+        return events == null ? List.of() : events.values().stream().toList();
     }
 
     public int lastSequence(String runId) {

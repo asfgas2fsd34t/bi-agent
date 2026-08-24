@@ -4,16 +4,10 @@
 
 ## 本地启动
 
-需要安装 Docker、Node.js/pnpm、Java 21、Maven 和 uv。完整启动命令会启动 Web、Java BI Core、Python Agent 和 PostgreSQL：
+需要安装 Docker、Node.js/pnpm、Java 21、Maven 和 uv。完整启动命令会启动 Web、Java BI Core、Python Agent 和 PostgreSQL，并等待服务健康：
 
 ```bash
 pnpm services:up
-```
-
-查看各服务健康状态：
-
-```bash
-pnpm services:health
 ```
 
 停止所有服务：
