@@ -114,24 +114,28 @@ function successEvents(query: FixtureQuery, truncated = false): AgentEvent[] {
       ];
 
   return [
-    event(1, "status", { status: "running", label: "正在分析", detail: "已载入 ecommerce@3" }),
-    event(2, "semantic_query", {
+    event(1, "status", { status: "queued", label: "已收到问题", detail: "正在恢复工作区权限与语义版本" }),
+    event(2, "status", { status: "running", label: "正在理解分析意图", detail: "识别指标、时间范围和比较方式" }),
+    event(3, "status", { status: "running", label: "正在检索语义上下文", detail: "已载入 ecommerce@3" }),
+    event(4, "semantic_query", {
       metric: query.metric,
       dimensions: [...query.dimensions],
       timeRange: query.timeRange,
       comparison: query.comparison,
       limit: query.limit,
     }),
-    event(3, "sql", {
+    event(5, "status", { status: "running", label: "正在校验并编译查询", detail: "仅使用已发布语义成员" }),
+    event(6, "sql", {
       dialect: "postgresql",
       statement: compileSql(query),
     }),
-    event(4, "data", {
+    event(7, "status", { status: "running", label: "正在执行查询", detail: "查询通过权限与预算校验" }),
+    event(8, "data", {
       columns: queryColumns(query),
       rows,
       truncated,
     }),
-    event(5, "verified_facts", {
+    event(9, "verified_facts", {
       facts: [
         { key: query.metric, label: metricLabel, value: round(totalCurrent), formattedValue: `¥${totalCurrent.toFixed(2)}M`, unit: "CNY", change: totalChange, attributes: {} },
         { key: "top_channel", label: query.dimensions[0] === "channel" ? "领先渠道" : "领先项", value: leader ? leader[categoryField] ?? null : null, formattedValue: leader ? `¥${numberValue(leader, "current").toFixed(2)}M` : "—", unit: "CNY", attributes: leader ? { share: round((numberValue(leader, "current") / Math.max(totalCurrent, 1)) * 100) } : {} },
@@ -139,14 +143,15 @@ function successEvents(query: FixtureQuery, truncated = false): AgentEvent[] {
       ],
       asOf: "2026-08-01T08:30:00+08:00",
     }),
-    event(6, "chart", { kind: "bar", categoryField, series }),
-    event(7, "insight", {
+    event(10, "chart", { kind: "bar", categoryField, series }),
+    event(11, "status", { status: "running", label: "正在生成洞察", detail: "基于 VerifiedFacts 组织可核查解释" }),
+    event(12, "insight", {
       claim: leader
         ? `${String(leader[categoryField])}${metricLabel} ¥${numberValue(leader, "current").toFixed(2)}M，排名第一${comparisonLabel === "无对比" ? "" : `，${comparisonLabel} ${formatChange(leader)}。`}`
         : `当前筛选条件下没有可用的${metricLabel}结果。`,
       evidence: `data.rows[${categoryField}=${leader ? String(leader[categoryField]) : "none"}]`,
     }),
-    event(8, "status", { status: "completed", label: "分析完成", detail: truncated ? "结果已截断，仍保留可核查数据" : "8 个事件已验证" }),
+    event(13, "status", { status: "completed", label: "分析完成", detail: truncated ? "结果已截断，仍保留可核查数据" : "13 个事件已验证" }),
   ];
 }
 
@@ -156,7 +161,7 @@ function scenarioEvents(scenarioId: FixtureScenarioId, query: FixtureQuery): Age
     case "loading":
       return [event(1, "status", { status: "queued", label: "正在准备分析", detail: "正在恢复工作区权限与语义版本" })];
     case "streaming":
-      return success.slice(0, 4);
+      return success.slice(1, 8);
     case "clarification":
       return [
         event(1, "status", { status: "running", label: "正在识别业务口径" }),
@@ -175,22 +180,22 @@ function scenarioEvents(scenarioId: FixtureScenarioId, query: FixtureQuery): Age
     case "empty":
       return [
         event(1, "status", { status: "running", label: "正在执行查询" }),
-        success[1]!,
-        success[2]!,
+        cloneEvent(findEvent(success, "semantic_query"), 2),
+        cloneEvent(findEvent(success, "sql"), 3),
         event(4, "data", { columns: queryColumns(query), rows: [], truncated: false }),
         event(5, "warning", { code: "NO_DATA_IN_RANGE", title: "当前范围没有数据", detail: "当前时间范围和筛选条件下没有符合权限的记录。" }),
         event(6, "status", { status: "empty", label: "查询完成，无结果" }),
       ];
     case "truncated":
       return [
-        ...success.slice(0, 7),
-        event(8, "warning", { code: "RESULT_TRUNCATED", title: "结果已截断", detail: `结果超过 ${query.limit} 行限制，当前仅展示可核查的部分结果。` }),
-        event(9, "status", { status: "completed", label: "分析完成（部分结果）", detail: "结果超过限制，仍保留可核查数据" }),
+        ...success.slice(0, 11),
+        event(12, "warning", { code: "RESULT_TRUNCATED", title: "结果已截断", detail: `结果超过 ${query.limit} 行限制，当前仅展示可核查的部分结果。` }),
+        event(13, "status", { status: "completed", label: "分析完成（部分结果）", detail: "结果超过限制，仍保留可核查数据" }),
       ].map((item) => item.event_type === "data" ? { ...item, payload: { ...item.payload, truncated: true } } : item);
     case "compile_failed":
       return [
         event(1, "status", { status: "running", label: "正在编译语义查询" }),
-        success[1]!,
+        cloneEvent(findEvent(success, "semantic_query"), 2),
         event(3, "error", { code: "QUERY_COMPILE_FAILED", title: "无法编译语义查询", detail: "当前维度组合无法映射到已发布语义包中的安全查询。", action: "调整维度组合后重新应用查询。", retryable: false }),
         event(4, "status", { status: "failed", label: "语义查询编译失败" }),
       ];
@@ -203,8 +208,8 @@ function scenarioEvents(scenarioId: FixtureScenarioId, query: FixtureQuery): Age
     case "failed":
       return [
         event(1, "status", { status: "running", label: "正在执行查询" }),
-        success[1]!,
-        success[2]!,
+        cloneEvent(findEvent(success, "semantic_query"), 2),
+        cloneEvent(findEvent(success, "sql"), 3),
         event(4, "error", { code: "DATABASE_ERROR", title: "数据源暂时不可用", detail: "Demo Warehouse 在查询超时前没有返回结果。", action: "稍后重试，或缩短分析时间范围。", retryable: true }),
         event(5, "status", { status: "failed", label: "分析失败" }),
       ];
@@ -228,6 +233,16 @@ type EventPayload<T extends EventType> = Extract<AgentEvent, { event_type: T }>[
 
 function event<T extends EventType>(sequence: number, eventType: T, payload: EventPayload<T>): Extract<AgentEvent, { event_type: T }> {
   return { run_id: runId, sequence, occurred_at: occurredAt, event_type: eventType, payload } as Extract<AgentEvent, { event_type: T }>;
+}
+
+function findEvent<T extends EventType>(events: AgentEvent[], eventType: T): Extract<AgentEvent, { event_type: T }> {
+  const found = events.find((item): item is Extract<AgentEvent, { event_type: T }> => item.event_type === eventType);
+  if (!found) throw new Error(`Fixture event not found: ${eventType}`);
+  return found;
+}
+
+function cloneEvent<T extends AgentEvent>(item: T, sequence: number): T {
+  return { ...structuredClone(item), sequence };
 }
 
 function resequence(events: AgentEvent[], afterSequence: number): AgentEvent[] {
@@ -339,40 +354,57 @@ function roundCurrency(value: number): number {
 
 export function createFixtureAnalysisRunSource(scenarioId: FixtureScenarioId): AnalysisRunSource {
   let query = cloneQuery(defaultQuery);
+  let cancelled = false;
   return {
     async start() {
       query = cloneQuery(defaultQuery);
+      cancelled = false;
       return { runId, semanticVersion: "ecommerce@3" };
     },
     async *observe(observedRunId) {
-      if (observedRunId === runId) yield* cloneEvents(scenarioEvents(scenarioId, query));
+      if (observedRunId === runId) {
+        const delay = scenarioId === "streaming" ? 120 : scenarioId === "success" ? 12 : 0;
+        yield* streamEvents(scenarioEvents(scenarioId, query), delay, () => !cancelled);
+      }
     },
     async *applyQueryPatch(observedRunId, patch, afterSequence) {
-      if (observedRunId !== runId) return;
+      if (observedRunId !== runId || cancelled) return;
       query = mergeQuery(query, patch);
       yield* cloneEvents(resequence(scenarioEvents(scenarioId, query), afterSequence));
     },
     async *submitClarification(observedRunId, optionId, afterSequence) {
-      if (observedRunId !== runId || !isMetricId(optionId)) return;
+      if (observedRunId !== runId || cancelled || !isMetricId(optionId)) return;
       query = mergeQuery(query, { metric: optionId });
       yield* cloneEvents(resequence(successEvents(query), afterSequence));
     },
     async *cancel(observedRunId, afterSequence) {
       if (observedRunId !== runId) return;
+      cancelled = true;
       yield* cloneEvents(resequence([
         event(1, "warning", { code: "RUN_CANCELLED", title: "分析已取消", detail: "查询已停止，没有发布不完整结果。" }),
         event(2, "status", { status: "cancelled", label: "已取消" }),
       ], afterSequence));
     },
     async *retry(observedRunId, afterSequence) {
-      if (observedRunId === runId) yield* cloneEvents(resequence(successEvents(query), afterSequence));
+      if (observedRunId === runId) {
+        cancelled = false;
+        yield* cloneEvents(resequence(successEvents(query), afterSequence));
+      }
     },
     async *submitFollowup(observedRunId, _question, afterSequence) {
-      if (observedRunId === runId) yield* cloneEvents(resequence(successEvents(query), afterSequence));
+      if (observedRunId === runId && !cancelled) yield* cloneEvents(resequence(successEvents(query), afterSequence));
     },
   };
 }
 
 function* cloneEvents(events: AgentEvent[]): Generator<AgentEvent> {
   for (const item of events) yield structuredClone(item);
+}
+
+async function* streamEvents(events: AgentEvent[], delay: number, shouldContinue: () => boolean): AsyncGenerator<AgentEvent> {
+  for (const [index, item] of events.entries()) {
+    if (delay && index > 0) await new Promise<void>((resolve) => setTimeout(resolve, delay));
+    if (!shouldContinue()) return;
+    yield structuredClone(item);
+  }
 }

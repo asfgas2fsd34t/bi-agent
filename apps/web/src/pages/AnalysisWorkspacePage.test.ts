@@ -20,7 +20,7 @@ describe("Analysis Workspace page", () => {
     expect(screen.getByRole("button", { name: "数据表" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "SemanticQuery" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "编译 SQL" })).toBeTruthy();
-    expect(screen.getByRole("region", { name: "可验证洞察" })).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "可验证洞察" })).toBeTruthy();
   });
 
   it("applies query controls through the Analysis Workspace interface", async () => {
@@ -34,9 +34,9 @@ describe("Analysis Workspace page", () => {
     await fireEvent.update(screen.getByLabelText("地区过滤"), "华东");
     await fireEvent.click(screen.getByRole("button", { name: "应用查询" }));
     expect(await screen.findByRole("heading", { name: "渠道、地区GMV环比" })).toBeTruthy();
-    expect(screen.getByText("year_to_date")).toBeTruthy();
-    expect(screen.getByText("region")).toBeTruthy();
-    expect(screen.getByText(/region = :region/)).toBeTruthy();
+    expect(await screen.findByText("year_to_date")).toBeTruthy();
+    expect(await screen.findByText("region")).toBeTruthy();
+    expect(await screen.findByText(/region = :region/)).toBeTruthy();
   });
 
   it("switches between chart and table result views", async () => {
@@ -74,12 +74,24 @@ describe("Analysis Workspace page", () => {
     await fireEvent.click(screen.getByRole("button", { name: "载入流式场景" }));
     await waitFor(() => expect(screen.getByTitle("取消运行")).toBeTruthy());
     await fireEvent.click(screen.getByTitle("取消运行"));
+    await new Promise((resolve) => setTimeout(resolve, 200));
     expect(await screen.findByText("运行已停止，没有发布不完整的分析结果。")).toBeTruthy();
 
     await fireEvent.click(screen.getByRole("button", { name: "载入失败场景" }));
     await fireEvent.click(await screen.findByRole("button", { name: "重新运行" }));
     expect(await screen.findByRole("heading", { name: "渠道净收入同比" })).toBeTruthy();
     await waitFor(() => expect(screen.queryByText("DATABASE_ERROR")).toBeNull());
+  });
+
+  it("renders stage status while the streaming fixture is still open", async () => {
+    await renderPage();
+
+    await fireEvent.click(screen.getByRole("button", { name: "载入流式场景" }));
+    expect(await screen.findByText("正在理解分析意图")).toBeTruthy();
+    expect(await screen.findByText("正在检索语义上下文")).toBeTruthy();
+
+    await fireEvent.click(await screen.findByTitle("取消运行"));
+    expect(await screen.findByText("运行已停止，没有发布不完整的分析结果。")).toBeTruthy();
   });
 
   it("exposes truncated and compile failure fixtures in the lab", async () => {

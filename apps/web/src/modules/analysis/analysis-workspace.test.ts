@@ -35,7 +35,16 @@ describe("Analysis Workspace", () => {
     expect(workspace.snapshot.value.data?.rows).toHaveLength(5);
     expect(workspace.snapshot.value.chart?.kind).toBe("bar");
     expect(workspace.snapshot.value.insights[0]?.evidence).toBe("data.rows[channel=抖音]");
+    expect(workspace.snapshot.value.insightStream?.complete).toBe(true);
     expect(workspace.snapshot.value.verifiedFacts?.facts.find((fact) => fact.key === "net_revenue")?.change).toBe(13.6);
+  });
+
+  it("exposes the user question before the source finishes starting", async () => {
+    const workspace = createAnalysisWorkspace(createFixtureAnalysisRunSource("success"));
+    const start = workspace.start("立即显示这条问题");
+
+    expect(workspace.snapshot.value.question).toBe("立即显示这条问题");
+    await start;
   });
 
   it("applies a clarification choice through the Analysis Workspace Interface", async () => {

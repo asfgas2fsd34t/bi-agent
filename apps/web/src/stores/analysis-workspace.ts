@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, shallowRef, type DeepReadonly } from "vue";
+import { ref, shallowRef, type DeepReadonly, watch } from "vue";
 
 import { createAnalysisWorkspace, type AnalysisRunSnapshot, type AnalysisWorkspace } from "@/modules/analysis/analysis-workspace";
 import type { QueryPatch } from "@/modules/analysis/analysis-run-source";
@@ -18,15 +18,22 @@ export const useAnalysisWorkspaceStore = defineStore("analysis-workspace", () =>
   const isLoading = ref(false);
   let workspace: AnalysisWorkspace | null = null;
   let requestVersion = 0;
+  let stopSnapshotWatch: (() => void) | null = null;
 
   async function loadScenario(scenarioId: FixtureScenarioId, question = snapshot.value?.question || defaultQuestion) {
     const version = ++requestVersion;
     selectedScenario.value = scenarioId;
     isLoading.value = true;
     const nextWorkspace = createAnalysisWorkspace(createSource(scenarioId));
-    await nextWorkspace.start(question);
-    if (version !== requestVersion) return;
+    stopSnapshotWatch?.();
     workspace = nextWorkspace;
+    stopSnapshotWatch = watch(nextWorkspace.snapshot, (next) => {
+      if (version === requestVersion) snapshot.value = next;
+    });
+    const start = nextWorkspace.start(question);
+    refreshSnapshot();
+    await start;
+    if (version !== requestVersion) return;
     refreshSnapshot();
     isLoading.value = false;
   }

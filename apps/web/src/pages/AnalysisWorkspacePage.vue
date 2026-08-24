@@ -30,7 +30,7 @@ import type { ChartIntent, ResultRow, VerifiedFact } from "@contracts/typescript
 
 const store = useAnalysisWorkspaceStore();
 const AnalysisChart = defineAsyncComponent(() => import("@/components/AnalysisChart.vue"));
-const { snapshot, isLoading } = storeToRefs(store);
+const { snapshot } = storeToRefs(store);
 const draft = ref("再按地区拆分");
 const workspaceLayout = ref<HTMLElement | null>(null);
 const chatWidth = ref(35);
@@ -49,7 +49,10 @@ const timeRangeOptions = Object.entries(fixtureTimeRangeLabels).map(([value, lab
 const comparisonOptions = Object.entries(fixtureComparisonLabels).map(([value, label]) => ({ value, label }));
 const dimensionOptions = Object.entries(fixtureDimensionLabels).map(([value, label]) => ({ value, label }));
 
-const isBusy = computed(() => ["queued", "running", "recovering"].includes(snapshot.value?.status ?? ""));
+const isBusy = computed(() =>
+  Boolean(snapshot.value?.runId)
+  && ["queued", "running", "recovering"].includes(snapshot.value?.status ?? ""),
+);
 const statusTone = computed(() => {
   switch (snapshot.value?.status) {
     case "completed":
@@ -267,7 +270,7 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
 
             <article class="turn agent-turn">
               <div class="turn-author"><span class="agent-mark"><Sparkles :size="14" /></span><strong>Atlas</strong></div>
-              <div v-if="!snapshot || isLoading" class="agent-progress">
+              <div v-if="!snapshot" class="agent-progress">
                 <LoaderCircle :size="17" class="spin" />正在装载 Fixture…
               </div>
               <template v-else-if="snapshot.clarification">
@@ -283,6 +286,9 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
                   </button>
                 </div>
               </template>
+              <template v-else-if="snapshot.insightStream && snapshot.status !== 'completed'">
+                <p>{{ snapshot.insightStream.claim }}<span v-if="!snapshot.insightStream.complete" class="streaming-cursor" aria-hidden="true"></span></p>
+              </template>
               <template v-else-if="snapshot.status === 'completed'">
                 <p>已按{{ metricLabel }}口径完成分析。{{ snapshot.insights[0]?.claim || "结果已通过语义版本与数据证据校验。" }}</p>
               </template>
@@ -296,10 +302,7 @@ function chartKindLabel(kind: ChartIntent["kind"]): string {
                 <p>运行已停止，没有发布不完整的分析结果。</p>
               </template>
               <div v-else class="progress-stack">
-                <div class="progress-row done"><CheckCircle2 :size="15" />解析分析意图</div>
-                <div class="progress-row" :class="{ done: snapshot.semanticQuery }"><Activity :size="15" />检索语义上下文</div>
-                <div class="progress-row" :class="{ done: snapshot.sql }"><Code2 :size="15" />校验并编译查询</div>
-                <div class="progress-row" :class="{ done: snapshot.data }"><Database :size="15" />执行并验证结果</div>
+                <div v-for="(stage, index) in snapshot.statusHistory" :key="`${index}-${stage}`" class="progress-row done"><CheckCircle2 :size="15" />{{ stage }}</div>
               </div>
             </article>
           </div>

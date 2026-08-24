@@ -30,14 +30,46 @@ describe("FixtureAnalysisRunSource", () => {
 
     expect(eventTypes).toEqual([
       "status",
+      "status",
+      "status",
       "semantic_query",
+      "status",
       "sql",
+      "status",
       "data",
       "verified_facts",
       "chart",
+      "status",
       "insight",
       "status",
     ]);
+
+    const statuses = [];
+    for (const event of await collect(source.observe(run.runId))) {
+      if (event.event_type === "status") statuses.push(event.payload.label);
+    }
+    expect(statuses).toEqual([
+      "已收到问题",
+      "正在理解分析意图",
+      "正在检索语义上下文",
+      "正在校验并编译查询",
+      "正在执行查询",
+      "正在生成洞察",
+      "分析完成",
+    ]);
+  });
+
+  it("stops a delayed stream after cancellation and does not replay later artifacts", async () => {
+    const source = createFixtureAnalysisRunSource("streaming");
+    const run = await source.start({ question: "可取消的分析" });
+    const stream = source.observe(run.runId)[Symbol.asyncIterator]();
+    const first = await stream.next();
+
+    expect(first.value?.event_type).toBe("status");
+    const cancellation = await collect(source.cancel(run.runId, first.value?.sequence ?? 0));
+    const lastCancellation = cancellation[cancellation.length - 1];
+    expect(lastCancellation?.event_type === "status" && lastCancellation.payload.status).toBe("cancelled");
+    expect((await stream.next()).done).toBe(true);
   });
 
   it("applies a structured query patch without exposing raw SQL as input", async () => {
@@ -98,3 +130,9 @@ describe("FixtureAnalysisRunSource", () => {
       || events.some((event) => event.event_type === "error" && event.payload.code === expectedCode)).toBe(true);
   });
 });
+
+async function collect(events: AsyncIterable<import("@contracts/typescript/analysis-run").AgentEvent>) {
+  const collected = [];
+  for await (const event of events) collected.push(event);
+  return collected;
+}

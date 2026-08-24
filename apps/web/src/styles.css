@@ -107,6 +107,8 @@ h1, h2, p { margin-top: 0; }
 .progress-stack { display: grid; gap: 7px; padding-left: 2px; }
 .progress-row { display: flex; align-items: center; gap: 8px; color: #9aa39e; font-size: 11px; }
 .progress-row.done { color: var(--green); }
+.streaming-cursor { display: inline-block; width: 2px; height: 1em; margin-left: 3px; vertical-align: -2px; background: var(--green); animation: cursor-blink 900ms steps(2, start) infinite; }
+@keyframes cursor-blink { 50% { opacity: 0; } }
 .composer { display: flex; align-items: center; gap: 7px; padding: 11px 13px 14px; border-top: 1px solid var(--line); }
 .composer input { min-width: 0; flex: 1; height: 39px; padding: 0 11px; color: var(--ink); background: var(--surface-subtle); border: 1px solid var(--line-strong); border-radius: 6px; outline: 0; }
 .composer input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(21,114,79,.1); }
